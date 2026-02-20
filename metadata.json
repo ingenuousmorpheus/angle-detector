@@ -1,0 +1,7 @@
+{
+  "name": "Live Angle Detector",
+  "description": "An application that uses the device camera and AI to detect and display the angle of the object in the center of the view.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
