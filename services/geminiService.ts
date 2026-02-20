@@ -14,45 +14,62 @@ const analysisSchema = {
     properties: {
         isAngleFound: {
             type: Type.BOOLEAN,
-            description: "Set to true if a measurable angle is found, otherwise false."
+            description: "True if a measurable angle is clearly visible in the image, false otherwise."
         },
-        description: { 
-            type: Type.STRING, 
-            description: "A mandatory, brief description of the object in the center. If no angle is found, this must explain why (e.g., 'object is curved', 'view is blurry')." 
+        description: {
+            type: Type.STRING,
+            description: "Brief description of what forms the angle (e.g., 'corner of a phone', 'two pencils meeting'). If no angle found, explain why."
         },
-        angle: { 
-            type: Type.NUMBER, 
-            description: "The calculated angle in degrees (0-180). Should be null if isAngleFound is false." 
+        angle: {
+            type: Type.NUMBER,
+            description: "The measured angle in degrees (0-360). Must be null if isAngleFound is false."
         },
         points: {
             type: Type.ARRAY,
-            description: "An array of three normalized {x, y} coordinates for the angle: [start, vertex, end]. Origin (0,0) is top-left. Should be null if isAngleFound is false.",
+            description: "Three normalized {x, y} coordinate points: [start_of_line_1, vertex, end_of_line_2]. Origin (0,0) is top-left of image. Must be null if isAngleFound is false.",
             items: {
                 type: Type.OBJECT,
                 properties: {
                     x: { type: Type.NUMBER, description: "Normalized x-coordinate (0.0 to 1.0)." },
                     y: { type: Type.NUMBER, description: "Normalized y-coordinate (0.0 to 1.0)." }
                 },
-                 required: ['x', 'y']
+                required: ['x', 'y']
             }
         }
     },
     required: ['isAngleFound', 'description']
 };
 
+const PROMPT = `You are acting as a digital protractor. Your job is to detect and measure angles visible in this camera image.
+
+Look for any angle formed by:
+- Edges or corners of objects (phones, books, cards, boxes, screens, papers, furniture)
+- Two straight lines or edges that meet at a point
+- Fingers or hands forming a V-shape or angle
+- Any two distinct straight edges that converge at a vertex
+
+Instructions:
+1. Identify the most prominent angle visible in the image.
+2. Measure the angle in degrees as accurately as possible, like a protractor would.
+3. Provide three points that define the angle: a point along the first edge, the vertex where they meet, and a point along the second edge.
+4. The points must be normalized coordinates (0.0 to 1.0) relative to the image dimensions.
+5. Measure the interior angle at the vertex (the angle between the two edges on the inside).
+
+If no clear angle with distinct straight edges is visible, set isAngleFound to false.
+
+Common angles to watch for: 90° (right angle/corner), 45°, 60°, 120°, 180° (straight line).
+Be precise - if it looks like a right angle (corner of a phone/book), it should be close to 90°.`;
 
 export const analyzeImageAngle = async (base64ImageData: string): Promise<AngleAnalysisResult> => {
-    const prompt = `Critically analyze the central object or hand gesture in this image. First, provide a brief 'description' of what you see. Then, determine if there's a single, clear, prominent angle formed by the object's lines. If yes, set 'isAngleFound' to true, and provide the 'angle' in degrees and the 'points' [start, vertex, end] as normalized coordinates. If no clear angle can be measured (e.g., the object is curved, blurry, or lacks distinct vertices), set 'isAngleFound' to false and explain why in the 'description'. Return 'null' for 'angle' and 'points' if no angle is found.`;
-
     const imagePart = {
         inlineData: {
-            mimeType: 'image/jpeg',
+            mimeType: 'image/jpeg' as const,
             data: base64ImageData,
         },
     };
 
     const textPart = {
-        text: prompt,
+        text: PROMPT,
     };
 
     try {
@@ -66,39 +83,39 @@ export const analyzeImageAngle = async (base64ImageData: string): Promise<AngleA
         });
 
         const jsonString = response.text;
-        const result = JSON.parse(jsonString) as AngleAnalysisResult;
-        
-        // Basic validation for core fields
-        if (typeof result.isAngleFound !== 'boolean' || typeof result.description !== 'string') {
-             throw new Error("Invalid response format from AI: core fields are missing.");
+        if (!jsonString) {
+            throw new Error("Empty response from AI model.");
         }
 
-        // Robust handling of angle data
+        const result = JSON.parse(jsonString) as AngleAnalysisResult;
+
+        if (typeof result.isAngleFound !== 'boolean' || typeof result.description !== 'string') {
+            throw new Error("Invalid response format from AI.");
+        }
+
         if (result.isAngleFound) {
             if (
                 typeof result.angle !== 'number' ||
                 !Array.isArray(result.points) ||
-                result.points.length !== 3
+                result.points.length !== 3 ||
+                !result.points.every(p => typeof p.x === 'number' && typeof p.y === 'number')
             ) {
-                // If AI claims success but data is bad, downgrade to a failure but keep the description.
                 result.isAngleFound = false;
                 result.angle = null;
                 result.points = null;
             }
         } else {
-             // Ensure angle and points are null if not found
             result.angle = null;
             result.points = null;
         }
 
         return result;
 
-// Fix: Corrected syntax for the catch block. The extraneous 'a' was causing a compile error.
     } catch (error) {
         console.error("Error analyzing image with Gemini:", error);
         if (error instanceof Error && error.message.includes('JSON')) {
-             throw new Error("The AI returned an invalid response. Please try again.");
+            throw new Error("AI returned an invalid response. Retrying...");
         }
-        throw new Error("Failed to analyze image. The AI model could not process the request.");
+        throw new Error("Failed to analyze image. Check your API key and network connection.");
     }
 };
