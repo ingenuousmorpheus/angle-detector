@@ -42,7 +42,20 @@ const analysisSchema = {
 
 
 export const analyzeImageAngle = async (base64ImageData: string): Promise<AngleAnalysisResult> => {
-    const prompt = `Critically analyze the central object or hand gesture in this image. First, provide a brief 'description' of what you see. Then, determine if there's a single, clear, prominent angle formed by the object's lines. If yes, set 'isAngleFound' to true, and provide the 'angle' in degrees and the 'points' [start, vertex, end] as normalized coordinates. If no clear angle can be measured (e.g., the object is curved, blurry, or lacks distinct vertices), set 'isAngleFound' to false and explain why in the 'description'. Return 'null' for 'angle' and 'points' if no angle is found.`;
+    const systemInstruction = `You are a professional industrial metrologist. Your task is to measure angles with extreme accuracy, specifically focusing on the central target (bullseye) area of the image.
+The "bullseye" is defined as the central 15% of the image (centered at x=0.5, y=0.5).
+
+CRITICAL RULES:
+1. ONLY measure the angle whose vertex (pivot point) is inside the central bullseye. 
+2. If multiple angles are visible, strictly ignore any that do not have their vertex in the center.
+3. Look for mechanical tools (protractors, angle finders). If a digital display or scale is visible near the vertex, use its value as the definitive angle.
+4. Precision: Provide the angle to exactly 2 decimal places.
+5. Point Placement: The 'vertex' coordinate MUST be the exact intersection of the two lines. The 'start' and 'end' points should be placed directly along the visible edges forming the angle.`;
+
+    const prompt = `Measure the primary angle whose vertex is located within the central bullseye area of this image. 
+Return the precise angle and the normalized coordinates [start, vertex, end]. 
+The vertex must be within the range x:[0.42-0.58], y:[0.35-0.65]. 
+If no clear angle vertex is in this bullseye, set isAngleFound to false.`;
 
     const imagePart = {
         inlineData: {
@@ -57,9 +70,10 @@ export const analyzeImageAngle = async (base64ImageData: string): Promise<AngleA
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: { parts: [imagePart, textPart] },
             config: {
+                systemInstruction,
                 responseMimeType: 'application/json',
                 responseSchema: analysisSchema,
             }

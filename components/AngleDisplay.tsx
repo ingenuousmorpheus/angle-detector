@@ -79,7 +79,7 @@ const AngleDisplay: React.FC<AngleDisplayProps> = ({ result, videoElement }) => 
                     animation: 'fade-in 0.5s ease-out'
                 }}
             >
-                {angle.toFixed(1)}°
+                {angle.toFixed(2)}°
             </text>
 
             <style>{`

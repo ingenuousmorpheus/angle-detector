@@ -64,8 +64,12 @@ const CameraAngleDetector: React.FC = () => {
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        
+        // Match canvas dimensions to the UI display area
+        const rect = video.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        
         const context = canvas.getContext('2d');
         if (!context) {
             setError("Could not get canvas context.");
@@ -73,7 +77,26 @@ const CameraAngleDetector: React.FC = () => {
             return;
         }
 
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Calculate 'object-cover' cropping logic to match UI exactly
+        const videoRatio = video.videoWidth / video.videoHeight;
+        const canvasRatio = canvas.width / canvas.height;
+        
+        let sw, sh, sx, sy;
+        if (videoRatio > canvasRatio) {
+            // Video is wider than display - crop sides
+            sh = video.videoHeight;
+            sw = sh * canvasRatio;
+            sx = (video.videoWidth - sw) / 2;
+            sy = 0;
+        } else {
+            // Video is taller than display - crop top/bottom
+            sw = video.videoWidth;
+            sh = sw / canvasRatio;
+            sx = 0;
+            sy = (video.videoHeight - sh) / 2;
+        }
+
+        context.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
         const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
         try {
@@ -121,7 +144,7 @@ const CameraAngleDetector: React.FC = () => {
                         <p className="text-base text-gray-200 font-mono text-center">
                             {analysisResult.angle !== null ? (
                                 <>
-                                    <span className="font-bold text-xl text-cyan-300">{analysisResult.angle.toFixed(1)}° </span>
+                                    <span className="font-bold text-xl text-cyan-300">{analysisResult.angle.toFixed(2)}° </span>
                                     <span className="text-gray-300">- {analysisResult.description}</span>
                                 </>
                             ) : (
