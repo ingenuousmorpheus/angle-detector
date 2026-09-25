@@ -446,3 +446,28 @@ A visually impressive AR overlay is secondary to:
 - safe handling of API credentials.
 
 When resumed, enhance the current application rather than rewriting it from scratch.
+
+
+---
+
+## AD-11 — AR Glasses Deployment
+
+Angle Detector is the measurement source of truth for the future Terminator New Lens / Lens OS wearable.
+
+The glasses shell may provide camera, IMU, depth, gaze, and world anchors, but angle calculation/calibration remains here.
+
+Target interface:
+
+```text
+Lens OS frame + optional plane/depth data
+↓
+Angle Detector edge/point engine
+↓
+angle + confidence + measurement mode
+↓
+AR overlay
+```
+
+Do not duplicate angle math in the wearable project.
+
+See `Terminator-New-Lens/docs/AR_GLASSES_ROADMAP.md` for the wearable integration architecture.
