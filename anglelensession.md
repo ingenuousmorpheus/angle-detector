@@ -178,11 +178,21 @@ Visual concept:
 Suggested lock states:
 
 ```text
-SEARCHING  → faint animated outline
-CANDIDATE  → partial outline
-LOCKED     → stable bright outline + angle arc
-UNSTABLE   → pulsing outline + instruction
+SEARCHING  → faint animated outline / hologram barely visible
+CANDIDATE  → partial translucent ghost forms around the target
+ALIGNING   → ghost visibly opens/closes or reshapes toward the detected geometry
+LOCKING    → glow intensifies while the numeric result stabilizes
+LOCKED     → stable bright outline + angle arc + final measurement
+UNSTABLE   → ghost fades/pulses + corrective instruction
 ```
+
+### Holographic "Lana / Terminator" presentation
+
+The intended presentation is not a rigid CAD overlay. It should feel like the semi-transparent Lana presentation used in Time Reassignment combined with a Terminator-style target lock.
+
+For a bend, a faint two-face holographic shape should appear around the selected metal. While the measurement engine is still solving, the hologram can visibly open and close around the hinge as candidate angles change. As confidence and temporal stability increase, the motion should settle. When the engine reaches the lock threshold, the hologram stops moving, the contour brightens/glows, the bend line flashes, and the final degree value appears.
+
+The animation is a visualization of the solver state, not a source of measurement. It must always be driven by the current measured geometry and confidence.
 
 The glowing outline is not just cosmetic. It tells the operator **exactly what geometry the app believes it is measuring**.
 
@@ -190,48 +200,77 @@ If the wrong piece is glowing, the user immediately knows not to trust the numbe
 
 ---
 
-# 6. Meshy: Where It Helps and Where It Does Not
+# 6. Meshy / Generated-Model Visual Concept
 
-Meshy can be useful, but it should not be the primary metrology engine.
+The intended Meshy idea is primarily a **visual/prompt reference for the holographic measurement animation**, not a requirement that every live measurement call the Meshy API.
 
-A generated mesh is an interpretation of the object. Generated geometry can look right while being dimensionally wrong. Therefore Angle Lens should never calculate the production measurement from a Meshy-generated model alone.
-
-### Good Meshy uses
-
-- generating example bent-sheet-metal assets for development;
-- producing training/test scenes at many known angles;
-- demonstrating the future 3D "ghost" presentation;
-- constructing representative brackets, channels, and bent parts for synthetic testing;
-- helping build AR visualization assets.
-
-### Better runtime solution for the simple angle shape
-
-For a bend, create the 3D ghost **parametrically in code**.
-
-Given:
-
-- vertex/bend line;
-- face direction 1;
-- face direction 2;
-- estimated depth/extent;
-
-construct two translucent planes or strips that meet at the measured angle.
-
-This gives the same visual feeling as placing a Meshy model over the metal while remaining mathematically tied to the measurement.
-
-Runtime visualization:
+The desired effect is:
 
 ```text
-real metal
-   +
-edge/segmentation mask
-   +
-two fitted mathematical planes
-   +
-glowing translucent AR ghost
+center target finds object
+        ↓
+faded model/ghost begins to form
+        ↓
+ghost opens/closes or reshapes while solver searches
+        ↓
+ghost aligns to the detected geometry
+        ↓
+confidence reaches lock threshold
+        ↓
+ghost brightens / "Dragon Glow" activates
+        ↓
+final calculation appears
 ```
 
-Meshy remains optional for complex object context, not the source of truth.
+This is similar to a translucent generated model being placed over the real object, with the faded/holographic quality of Lana in Time Reassignment and the target-acquisition feel of Terminator Vision.
+
+### Runtime implementation
+
+For simple geometry such as a brake bend, the live hologram should normally be generated parametrically from the actual measurement:
+
+- shared vertex/bend line;
+- face direction 1;
+- face direction 2;
+- estimated face extent/depth;
+- current angle candidate;
+- current confidence/stability.
+
+The renderer can continuously animate those planes toward the solver result. This gives the exact visual behavior desired without allowing a generated mesh to alter the measurement.
+
+### Optional Meshy use
+
+Meshy can still help with:
+
+- generating a visual reference asset/style for the ghost;
+- complex test objects;
+- synthetic fixtures and training scenes;
+- brackets, channels, shoes, clothing forms, and other representative 3D assets;
+- demonstrating how a more complex holographic shell should appear;
+- prototyping the "faded generated object" aesthetic.
+
+If a Meshy-generated model is used in live presentation, it is a **display shell**. The measurement engine remains the source of geometry and numeric results.
+
+### Measurement rule
+
+A generated mesh is an interpretation of an object and can look correct while being dimensionally wrong. Therefore:
+
+**Meshy/generative geometry may visualize or assist identification, but must never silently become metrology ground truth.**
+
+Runtime concept:
+
+```text
+real object
+   +
+segmentation / tracked landmarks
+   +
+deterministic measured geometry
+   +
+faded holographic shell
+   +
+confidence-driven glow
+```
+
+This separation preserves both goals: trustworthy math underneath and the futuristic Meshy/Lana/Terminator visual experience on top.
 
 ---
 
@@ -804,6 +843,92 @@ The measurement engine remains usable without Lana.
 
 ---
 
+## AL-13 — Terminator Vision General Measurement Layer
+
+Angle Lens should eventually become one measurement capability inside the broader Terminator Vision system.
+
+The same architecture can support objects beyond brake-formed metal, but each measurement class must use geometry appropriate to that object.
+
+Potential modes:
+
+- **Angle mode** — bend angles, corners, brackets, tooling;
+- **Linear mode** — width, height, distance, diameter;
+- **Foot / shoe estimate mode** — foot length/width and likely shoe-size range;
+- **Body / clothing estimate mode** — shoulder width, chest/torso dimensions, sleeve/inseam proxies, likely shirt-size range;
+- **Object fit mode** — compare an observed object against a known dimensional template.
+
+### Important distinction
+
+Rigid-object angles can often be measured directly from geometric features.
+
+Shoe and clothing size estimation is harder because a single RGB image has no guaranteed real-world scale. These modes should use some combination of:
+
+- AR depth when available;
+- camera intrinsics;
+- detected floor/body planes;
+- known reference dimensions;
+- user-provided height where appropriate;
+- multiple views;
+- pose/body landmark tracking;
+- confidence ranges instead of pretending to know an exact size.
+
+Example output:
+
+```text
+SHIRT SIZE ESTIMATE
+Likely: M
+Range: M–L
+Confidence: 0.82
+Basis: shoulder + torso geometry
+```
+
+or:
+
+```text
+FOOT LENGTH
+Estimated: 27.1 cm ± 0.8 cm
+Likely shoe range shown separately
+```
+
+Do not collapse body dimensions directly into a universal clothing size. Brand and garment sizing varies, so actual body measurements and the resulting size recommendation should remain separate fields.
+
+### Terminator Vision visual behavior
+
+The presentation language remains consistent across modes:
+
+```text
+SEARCHING
+→ faint holographic shell
+
+CANDIDATE
+→ target outline / landmarks appear
+
+ALIGNING
+→ shell reshapes to the observed object/person
+
+LOCKING
+→ glow intensifies and measurements stabilize
+
+LOCKED
+→ final dimensions + confidence appear
+```
+
+For a person, the hologram can be a subtle faded body/garment shell rather than a solid character model. For a shoe/foot, it can be a translucent footprint/last-shaped shell with length and width markers.
+
+### Lana integration
+
+Future interaction could include:
+
+> "Lana, measure this bend."
+
+> "Lana, what size shoe does this look like?"
+
+> "Lana, estimate the shirt size."
+
+Lana/Terminator Vision handles target selection, dialogue, and presentation. Angle Lens/general measurement modules return structured measurements and confidence. Lana must communicate estimates as estimates when scale/depth evidence is limited.
+
+**Gate:** each new measurement mode has its own validation set and never inherits an accuracy claim from Angle Mode.
+
 # 10. User Experience Target
 
 The finished phone workflow should feel like this:
@@ -811,13 +936,14 @@ The finished phone workflow should feel like this:
 1. Open Angle Lens.
 2. Point camera at the workpiece.
 3. Move the bend into the center target.
-4. Faint glow searches around the metal.
-5. Two surfaces become outlined.
-6. Bend line/vertex flashes when acquired.
-7. Angle appears.
-8. Reading stabilizes and changes from `SEARCHING` to `LOCKED`.
-9. Tap Lock to freeze/save the measurement.
-10. If perspective is poor, the app tells the operator how to move the phone.
+4. A faint translucent holographic shape begins forming around the metal.
+5. The ghost opens/closes as the solver tests candidate geometry.
+6. Two measured surfaces become outlined and the ghost settles onto them.
+7. Glow intensity increases as confidence/stability rises.
+8. Bend line/vertex flashes when acquired.
+9. The final angle appears only when the reading reaches the configured lock threshold.
+10. Tap Lock to freeze/save the measurement.
+11. If perspective is poor, the hologram fades/pulses and the app tells the operator how to move the phone.
 
 Example:
 
@@ -935,6 +1061,8 @@ The first milestone is:
 6. **The measurement core remains independent of React, Gemini, and any one AR platform.**
 7. **AR is an upgrade to the measurement engine, not a rewrite of it.**
 8. **No accuracy claim without fixture testing.**
+9. **The holographic shell is presentation driven by measurement state; it never drives the measurement.**
+10. **General body/shoe/clothing modes must expose uncertainty and must not pretend a single RGB image provides absolute scale.**
 
 ---
 
@@ -944,4 +1072,8 @@ When development resumes, begin with **AL-01 and AL-02**.
 
 Do not rewrite the current application.
 
-First build a deterministic angle-math core and a manual three-point measurement path inside the existing camera UI. Once that is trustworthy, add automatic center-ROI line/metal detection and the Dragon Glow outline. The 3D ghost and AR migration come after the measurement engine is proven.
+First build a deterministic angle-math core and a manual three-point measurement path inside the existing camera UI. Once that is trustworthy, add automatic center-ROI line/metal detection and the Dragon Glow outline.
+
+The first presentation prototype after that should implement the intended hologram state machine: **SEARCHING → CANDIDATE → ALIGNING → LOCKING → LOCKED**, with a faint two-face ghost visibly opening/closing toward the live solver result and glowing when the measurement is ready.
+
+The 3D ghost and AR migration come after the measurement engine is proven. Generalized Terminator Vision measurements (shoe/body/clothing/object dimensions) should reuse the same renderer and confidence architecture but receive their own measurement algorithms and validation.
