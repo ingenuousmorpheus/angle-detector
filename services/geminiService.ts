@@ -41,7 +41,10 @@ const analysisSchema = {
 };
 
 
-export const analyzeImageAngle = async (base64ImageData: string): Promise<AngleAnalysisResult> => {
+export const analyzeImageAngle = async (
+    base64ImageData: string,
+    mimeType: string = 'image/jpeg',
+): Promise<AngleAnalysisResult> => {
     const systemInstruction = `You are a professional industrial metrologist. Your task is to measure angles with extreme accuracy, specifically focusing on the central target (bullseye) area of the image.
 The "bullseye" is defined as the central 15% of the image (centered at x=0.5, y=0.5).
 
@@ -59,7 +62,7 @@ If no clear angle vertex is in this bullseye, set isAngleFound to false.`;
 
     const imagePart = {
         inlineData: {
-            mimeType: 'image/jpeg',
+            mimeType,
             data: base64ImageData,
         },
     };

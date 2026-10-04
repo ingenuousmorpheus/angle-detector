@@ -1,0 +1,33 @@
+{
+  "source": "anglefinder1.glb (generated Mitutoyo digital protractor mesh), orthographic front view",
+  "image": "mitutoyo_center.jpg",
+  "width": 1280,
+  "height": 720,
+  "includedAngleDeg": 134.646,
+  "supplementDeg": 45.354,
+  "uncertaintyDeg": 0.886,
+  "edgePairAnglesDeg": {
+    "topEdges": 135.536,
+    "bottomEdges": 133.765
+  },
+  "lcdTextureReadingDeg": 101.5,
+  "note": "LCD value is part of the generated texture and disagrees with the blade geometry; blade geometry is the ground truth for this fixture.",
+  "points": [
+    {
+      "x": 301.6414668147554,
+      "y": 146.6610607021546
+    },
+    {
+      "x": 640.0,
+      "y": 360.0
+    },
+    {
+      "x": 1126.9444296713962,
+      "y": 246.4873469079385
+    }
+  ],
+  "vertexWorld": {
+    "x": -0.07232253515628843,
+    "z": 0.05429757778061808
+  }
+}

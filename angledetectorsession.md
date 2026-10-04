@@ -471,3 +471,57 @@ AR overlay
 Do not duplicate angle math in the wearable project.
 
 See `Terminator-New-Lens/docs/AR_GLASSES_ROADMAP.md` for the wearable integration architecture.
+
+---
+
+# Session Log
+
+Oldest first. Each entry follows Goal / Starting State / Changed / Verification / Result /
+Findings / Gate / Do Not Redo / Next Action.
+
+## Session 001 — AD-00 Preserve + Baseline
+
+### Goal
+Set a measurable starting point (test harness, fixtures with known angles, baseline record)
+without changing the app's behavior. Add the user-supplied 3D Mitutoyo protractor model
+(`anglefinder1.glb`) as a reference fixture.
+
+### Starting State
+Main at `4f2773e`: Gemini-only prototype, no tests, no fixtures. Roadmap only. (The remote
+branch `claude/angle-detection-protractor-PqWCi` predates the session docs and was not used.)
+
+### Changed
+- `vitest` + `vitest.config.ts`, scripts `test`, `baseline:gemini`, `fixtures:export`.
+- `src/fixtures/syntheticAngle.ts` — seeded rasterizer for bent-bar fixtures with
+  construction truth; `standardFixtureSet()` = 10 roadmap angles × 3 rotations.
+- `scripts/png.ts` (dependency-free PNG encoder), `scripts/export-fixtures.ts`,
+  `scripts/baseline-gemini.ts`.
+- `scripts/fixtures/mitutoyo_truth.py` (Blender) → `fixtures/mitutoyo-digital-protractor/`
+  (`mitutoyo_center.jpg`, `truth.json`). The 62 MB GLB itself is not committed.
+- `services/geminiService.ts` — optional `mimeType` arg (default `image/jpeg`; app behavior unchanged).
+- `docs/BASELINE.md`.
+
+### Verification
+- `npm test`: 15/15 pass (`tests/fixtures.test.ts`).
+- `npm run lint` and `npm run build` pass.
+- Blade-edge line fits on the 4000×3000 silhouette: max residual ≤ 1.7 px per edge.
+
+### Result
+PARTIAL — harness, fixtures, and behavior record done. The Gemini error/latency numbers are
+not recorded (no API key in this session).
+
+### Findings
+- Mitutoyo model: the blades meet at **134.65° ± 0.9°** (supplement 45.35°); the LCD texture
+  reads **101.5°**. These disagree, so the generated display number is not trustworthy (truth.json, test
+  "stores blade geometry as ground truth").
+- The current Gemini prompt explicitly prefers a visible display value, so it would return the
+  generated 101.5° on this fixture.
+
+### Gate/Blocker
+Gemini baseline needs `GEMINI_API_KEY` → `npm run baseline:gemini`.
+
+### Do Not Redo
+Mitutoyo truth extraction (rerun the script only if the GLB changes). Fixture angle list.
+
+### Next Action
+AD-01 deterministic geometry core.
