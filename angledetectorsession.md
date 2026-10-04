@@ -525,3 +525,43 @@ Mitutoyo truth extraction (rerun the script only if the GLB changes). Fixture an
 
 ### Next Action
 AD-01 deterministic geometry core.
+
+## Session 002 — AD-01 Deterministic Geometry Core
+
+### Goal
+Pure, tested angle math with no dependency on React, Gemini, camera or AR (AD-01 / AL-01).
+
+### Starting State
+Session 001 harness + fixtures on main (`6ee344d`).
+
+### Changed
+- `src/geometry/angle2d.ts` — vec ops; `angleBetweenVectors` = atan2(|u×v|, u·v);
+  `angleFromPoints`, `signedAngle`, `angleBetweenLines`, `supplement`/`exterior`/`toConvention`,
+  `lineIntersection`, `distanceToLine`, normalized↔pixel.
+- `src/geometry/lineFit.ts` — total-least-squares fit with residuals/span (used by AD-03).
+- `src/camera/cameraTransform.ts` — the app's object-cover crop as a pure, tested function.
+- `src/measurement/measurementTypes.ts` — `AngleMeasurement` contract (anglelensession §9) +
+  `MeasurementSource`.
+- `src/measurement/measureFromPoints.ts` — three normalized points → `AngleMeasurement`,
+  computed in **pixel space**, fails closed on short arms.
+
+### Verification
+`npm test`: 46/46 (31 new in `tests/geometry.test.ts`): all roadmap angles × 6 rotations ×
+3 scales to 1e-9; near-0°/180° precision; vertical-line fits; crop round-trips; every synthetic
+fixture exact; Mitutoyo truth points → 134.65°. `npm run lint` clean.
+
+### Result
+COMPLETE.
+
+### Findings
+Measuring in normalized coordinates on a 16:9 frame skews angles (a true 45° reads ≈29.4°);
+test "computes in pixel space" pins this. Any future code must convert to pixels first.
+
+### Gate/Blocker
+None.
+
+### Do Not Redo
+Angle formula choice (atan2 over acos); TLS line fit over y=mx+b.
+
+### Next Action
+AD-02 manual freeze-frame three-point mode in the existing camera UI.
