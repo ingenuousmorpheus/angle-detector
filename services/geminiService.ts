@@ -3,11 +3,16 @@ import type { AngleAnalysisResult } from '../types';
 
 const API_KEY = process.env.API_KEY;
 
-if (!API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-}
+// Created on first use so the app (manual measurement) still loads without a key.
+let ai: GoogleGenAI | null = null;
+const getClient = (): GoogleGenAI => {
+    if (!API_KEY) {
+        throw new Error("AI assist unavailable: GEMINI_API_KEY is not set. Manual measurement still works.");
+    }
+    return ai ??= new GoogleGenAI({ apiKey: API_KEY });
+};
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+export const isAiAvailable = (): boolean => Boolean(API_KEY);
 
 const analysisSchema = {
     type: Type.OBJECT,
@@ -71,8 +76,9 @@ If no clear angle vertex is in this bullseye, set isAngleFound to false.`;
         text: prompt,
     };
 
+    const client = getClient();
     try {
-        const response = await ai.models.generateContent({
+        const response = await client.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: { parts: [imagePart, textPart] },
             config: {

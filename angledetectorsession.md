@@ -565,3 +565,50 @@ Angle formula choice (atan2 over acos); TLS line fit over y=mx+b.
 
 ### Next Action
 AD-02 manual freeze-frame three-point mode in the existing camera UI.
+
+## Session 003 — AD-02 Manual AR Protractor Mode
+
+### Goal
+Measure an angle with no AI: freeze → tap vertex, edge 1, edge 2 → angle from geometry; drag
+to correct; loupe; snap; undo/reset; lock; convention toggle; save annotated photo.
+
+### Starting State
+Session 002 geometry core on main (`70478cc`). App crashed at load without a Gemini key.
+
+### Changed
+- `services/geminiService.ts` — client created lazily; `isAiAvailable()`. The app now loads and
+  measures without a key; the AI button only shows when a key exists.
+- `src/render/ManualProtractor.tsx` — frozen-frame overlay: tap order vertex → A → B, draggable
+  handles (32 px hit radius), 4× loupe while dragging, edge snap (edge points only, never the
+  hidden vertex), undo (50 deep) / reset, lock, interior/supplement/exterior, save PNG.
+  ResizeObserver keeps the overlay aligned on resize/orientation change.
+- `src/vision/grayImage.ts` (luma, Sobel), `src/vision/snapToEdge.ts` (fails closed: no edge → no snap).
+- `src/render/exportAnnotated.ts`, `src/render/format.ts` (1 decimal; presentation only).
+- `components/CameraAngleDetector.tsx` — **Freeze & Measure**, **Open Photo**, `?photo=<url>`
+  deep link, **Measure AI points** (Gemini points become a starting placement; the number is
+  then computed by geometry). Gemini readout labelled "AI estimate (unverified)". Frame capture
+  uses the tested `coverCrop`.
+- `App.tsx` copy, `components/AngleDisplay.tsx` label.
+
+### Verification
+- `npm test` 50/50 (`tests/snap.test.ts` new). `npm run lint`, `npm run build` pass.
+- Same frozen points → same number: `measureFromPoints` is pure (Session 002 tests).
+- **Not verified in a browser.** Launching the dev-server preview was denied in this session.
+
+### Result
+PARTIAL. The code is complete and type-checks, but the UI interaction is not yet browser-verified.
+
+### Findings
+None new beyond Session 001–002.
+
+### Gate/Blocker
+Browser / phone check: `npm run dev`, then open
+`http://localhost:3000/?photo=/fixtures/mitutoyo-digital-protractor/mitutoyo_center.jpg`,
+tap the pivot (image center, right of the knob), then a point on each blade. Expect ≈134.6°
+interior / 45.4° supplement (truth 134.65° ± 0.9°).
+
+### Do Not Redo
+Lazy Gemini client. The decision not to snap the vertex.
+
+### Next Action
+Run the browser check above; then AD-04 confidence/quality gate.
