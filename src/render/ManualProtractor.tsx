@@ -262,17 +262,35 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-3 font-mono text-center pointer-events-none">
+      {/* Industrial measurement readout: large high-contrast digits for workshop
+          readability, plus explicit FROZEN / LOCKED status so a live reading is
+          never confused with a frozen measurement. Presentation only — the
+          numbers come from the unchanged AngleMeasurement contract. */}
+      <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-3 py-2.5 text-center pointer-events-none border-t border-white/10">
         {nextPrompt !== -1 ? (
-          <span className="text-cyan-300">{PROMPTS[nextPrompt]}</span>
+          <span className="font-mono text-cyan-300 text-lg">{PROMPTS[nextPrompt]}</span>
         ) : measurement?.found ? (
-          <>
-            <span className="font-bold text-xl text-yellow-200">{formatAngle(measurement.displayDeg)}</span>
-            <span className="text-gray-300"> {conventionLabel(convention)}</span>
-            <span className="text-gray-400 text-sm"> · interior {formatAngle(measurement.angleDeg)} · supplement {formatAngle(measurement.supplementDeg)} · mode: 2D apparent · manual</span>
-          </>
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-amber-300 bg-amber-400/15 border border-amber-300/40 rounded px-2 py-0.5">
+                Frozen
+              </span>
+              {locked && (
+                <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-lime-300 bg-lime-400/15 border border-lime-300/40 rounded px-2 py-0.5">
+                  Locked
+                </span>
+              )}
+              <span className="font-mono font-bold tabular-nums text-yellow-200 text-4xl md:text-5xl leading-none">
+                {formatAngle(measurement.displayDeg)}
+              </span>
+            </div>
+            <div className="font-mono text-gray-400 text-xs md:text-sm">
+              {conventionLabel(convention)} · interior {formatAngle(measurement.angleDeg)} · supplement{' '}
+              {formatAngle(measurement.supplementDeg)} · 2D apparent · manual
+            </div>
+          </div>
         ) : (
-          <span className="text-yellow-400">{measurement?.reason}</span>
+          <span className="font-mono text-yellow-400">{measurement?.reason}</span>
         )}
       </div>
     </div>
