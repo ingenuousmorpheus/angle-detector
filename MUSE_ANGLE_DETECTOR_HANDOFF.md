@@ -80,7 +80,11 @@ One small, reversible, presentation-only change in
 ## 4. Files changed
 
 - `src/render/ManualProtractor.tsx` — bottom readout bar JSX only.
-- Commit: (recorded at push time — see PR).
+- Local commit `1616563`; pushed as `4db8a66` on
+  `muse/angle-detector-industrial-ui` (pushed blob SHA verified identical).
+- Draft PR: **https://github.com/ingenuousmorpheus/angle-detector/pull/1**
+  — "Angle Detector — industrial measurement readout (AD-03)", base `main`,
+  draft. Not merged, per instructions.
 
 ## 5. Tests performed
 
