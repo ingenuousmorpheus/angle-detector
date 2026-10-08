@@ -139,3 +139,55 @@ presentation-only, same safety boundaries.
   AI prompts, or calibration values needs the owner's explicit approval and
   must re-run the full test suite plus the fixture-based browser check from
   `angledetectorsession.md` Session 003.
+
+## 10. AD-03 follow-up — portrait usability (2026-10-08)
+
+Assigned follow-up on the same branch, targeting the documented 390px issue
+(§2.6 / §6): the two-row toolbar and readout bar covered nearly the entire
+`aspect-video` frozen frame on portrait phones.
+
+### Changes (presentation only)
+
+- `components/CameraAngleDetector.tsx` — frame container is now
+  `aspect-video portrait:aspect-[3/4]`: portrait phones/tablets get a taller
+  frame; landscape and desktop keep 16:9. Capture uses the tested `coverCrop`
+  at whatever aspect is displayed, and the angle is computed from normalized
+  points converted to pixels, so the math is aspect-independent. Visible
+  consequence: annotated PNG exports from portrait captures are 3:4.
+- `src/render/ManualProtractor.tsx` —
+  - Toolbar buttons are icon-only below the `sm` breakpoint (labels
+    `hidden sm:inline`): same buttons, handlers, order, and 44px touch
+    targets; `title` attributes already present. One row on a 390px phone.
+  - Readout details collapse on small screens to a one-liner
+    ("interior · 2D apparent"); the full detail line stays on `sm+`.
+    Angle, FROZEN, and LOCKED indicators unchanged and fully readable.
+
+### Verification
+
+- `npm run lint` clean, `npm test` 50/50 pass, `npm run build` clean.
+- `git diff`: only the two files above; no measurement/vision/service/test changes.
+- Headless-Chromium checks with the Mitutoyo fixture + 3 placed points:
+  - 390px: frame 354×473 (was 354×197); one-row icon toolbar; FROZEN + 99.7°.
+  - 430px: frame 394×527; FROZEN + 98.9°.
+  - 768px portrait tablet: frame 717×957; FROZEN + 101.3°.
+  - 1440px desktop: unchanged 16:9 (892×500); text labels and full details
+    line render as before; FROZEN + 141.1°.
+- Screenshots: `~/workspace/your_files/angle-detector-ui/angle-*-v2.png`.
+- On-screen numbers verify the readout UI, not measurement accuracy.
+
+### Design tradeoff note
+
+The taller portrait frame was chosen over alternatives (collapsible toolbar,
+floating readout) because it directly gives the operator a practical view of
+the workpiece with the least interaction complexity. The only product-visible
+consequence is the 3:4 export aspect on portrait captures. No safe-resolution
+blocker was found; nothing was guessed.
+
+- Owner reviews the screenshots on a phone and confirms the readout is readable
+  in workshop lighting.
+- Independent code review of the one-file diff (presentation only).
+- Do not merge until both are done. No deploy step exists for this repo.
+- Any future work touching `src/geometry`, `src/measurement`, `src/vision`,
+  AI prompts, or calibration values needs the owner's explicit approval and
+  must re-run the full test suite plus the fixture-based browser check from
+  `angledetectorsession.md` Session 003.

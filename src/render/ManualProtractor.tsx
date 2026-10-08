@@ -192,6 +192,10 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   const nextPrompt = points.findIndex((q) => q === null);
 
   const btn = 'flex items-center gap-1.5 px-3 h-11 rounded-md bg-black/70 hover:bg-black/90 text-sm font-semibold disabled:opacity-40';
+  // Icon-only toolbar on small screens: same buttons, handlers, order and
+  // 44px touch targets — the text labels just collapse below the sm breakpoint
+  // so the toolbar fits one row on a portrait phone instead of covering the frame.
+  const btnLabel = 'hidden sm:inline';
 
   return (
     <div ref={rootRef} className="absolute inset-0 z-40 select-none" style={{ touchAction: 'none' }}>
@@ -244,19 +248,19 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
 
       <div className="absolute top-2 left-2 right-2 flex flex-wrap gap-2 justify-between pointer-events-auto">
         <div className="flex gap-2">
-          <button className={btn} onClick={onExit} title="Back to live camera"><Camera className="w-4 h-4" />Live</button>
+          <button className={btn} onClick={onExit} title="Back to live camera"><Camera className="w-4 h-4" /><span className={btnLabel}>Live</span></button>
           <button className={btn} onClick={undo} disabled={!history.length || locked} title="Undo"><Undo2 className="w-4 h-4" /></button>
           <button className={btn} onClick={reset} disabled={locked} title="Reset points"><RotateCcw className="w-4 h-4" /></button>
         </div>
         <div className="flex gap-2">
           <button className={`${btn} ${snap ? 'text-cyan-300' : 'text-gray-400'}`} onClick={() => setSnap((s) => !s)} title="Snap edge points to the nearest strong edge">
-            <Magnet className="w-4 h-4" />Snap
+            <Magnet className="w-4 h-4" /><span className={btnLabel}>Snap</span>
           </button>
           <button className={btn} onClick={() => setConvention((c) => NEXT_CONVENTION[c])} title="Interior / supplement / exterior">
-            <Repeat className="w-4 h-4" />{conventionLabel(convention)}
+            <Repeat className="w-4 h-4" /><span className={btnLabel}>{conventionLabel(convention)}</span>
           </button>
           <button className={`${btn} ${locked ? 'text-yellow-300' : ''}`} onClick={() => setLocked((l) => !l)} disabled={!measurement?.found} title="Lock result">
-            {locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}{locked ? 'Locked' : 'Lock'}
+            {locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}<span className={btnLabel}>{locked ? 'Locked' : 'Lock'}</span>
           </button>
           <button className={btn} onClick={save} disabled={!measurement?.found} title="Save annotated photo"><Download className="w-4 h-4" /></button>
         </div>
@@ -284,9 +288,12 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
                 {formatAngle(measurement.displayDeg)}
               </span>
             </div>
-            <div className="font-mono text-gray-400 text-xs md:text-sm">
+            <div className="hidden sm:block font-mono text-gray-400 text-xs md:text-sm">
               {conventionLabel(convention)} · interior {formatAngle(measurement.angleDeg)} · supplement{' '}
               {formatAngle(measurement.supplementDeg)} · 2D apparent · manual
+            </div>
+            <div className="sm:hidden font-mono text-gray-400 text-xs">
+              {conventionLabel(convention)} · 2D apparent
             </div>
           </div>
         ) : (
