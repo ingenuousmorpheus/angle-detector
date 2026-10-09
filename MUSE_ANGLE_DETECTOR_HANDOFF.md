@@ -191,3 +191,68 @@ blocker was found; nothing was guessed.
   AI prompts, or calibration values needs the owner's explicit approval and
   must re-run the full test suite plus the fixture-based browser check from
   `angledetectorsession.md` Session 003.
+
+## 11. AD-03 safety refinement — snap defaults OFF (2026-10-09)
+
+Owner-authorized refinement (via Lana 1 relay, explicit approval; no push/merge/deploy).
+
+**Change** (`src/render/ManualProtractor.tsx` only):
+- Snap-to-edge now defaults OFF for new measurement sessions (`useState(false)`).
+  It remains an explicit per-session operator toggle (magnet button; cyan = on, gray = off).
+- Readout details line now reports snap status: `… · 2D apparent · snap on/off`
+  (desktop full line and mobile one-liner).
+- New operator guidance under the reading: "Verify both edge points before trusting
+  the angle. Snap may select nearby features."
+- Geometry, measurement contract, vision, and snap algorithm untouched.
+
+**Why:** Session 006 touch tests showed snap-ON pulling scripted taps ~5.5° off fixture
+truth on the busy Mitutoyo render (129.1° vs 134.646°). Snap-off taps on the same
+points read 134.7° — the engine is exact; the risk is purely point placement on
+detailed parts. Default-off makes the safe behavior the default.
+
+**Verification (2026-10-09):**
+- `npm test` 50/50, `npm run lint` clean, `npm run build` clean.
+- 7/7 snap checks: defaults OFF (magnet gray), taps → 134.7° ≈ truth, readout shows
+  "snap off", guidance visible, toggle enables (magnet cyan, "snap on"), reset clears
+  points and restores the placement prompt.
+- Full 6-viewport touch matrix re-run (360×800, 393×873, 412×915, 430×932 portrait;
+  800×360, 932×430 landscape): all 6 read within 0.05° of truth, drag/lock/export pass,
+  no horizontal overflow, 44px-tall targets. Zero failures.
+- Screenshots: `~/workspace/your_files/angle-detector-ui/android-*.png`.
+
+## 12. PR #1 reviewer handoff
+
+**Branch:** `muse/angle-detector-industrial-ui` → `main`. **Status:** draft, unmerged.
+**Scope:** presentation-only. Five local commits on top of main (`cb5733e`):
+1. `1616563` — industrial measurement readout (large digits, FROZEN/LOCKED chips).
+2. `4cb5151` (+ API re-push `2a69f8c2`, tree-identical) — portrait follow-up: 3:4 frame
+   on portrait, icon-only toolbar below `sm`, one-line readout details.
+   (`06b9e85` recorded the push in the handoff — docs only.)
+3. `d582223` — snap defaults OFF + snap status/guidance in readout (+ `bc146f1`
+   session log — docs only).
+**Note:** commits 3 (and the docs-only ones) exist only locally as of Session 008 —
+PR #1's remote scope is items 1–2 until the branch is pushed (needs Pedro's
+separate authorization).
+
+**What to review:** `src/render/ManualProtractor.tsx` (readout, toolbar, snap default),
+`components/CameraAngleDetector.tsx` (frame aspect only). Handoff docs.
+
+**What NOT to review for behavior:** `src/geometry/`, `src/measurement/`, `src/vision/`,
+services, fixtures, tests — untouched. No new dependencies.
+
+**Test evidence:** `npm test` 50/50, `npm run lint` clean, `npm run build` clean;
+headless-Chromium touch matrix (6 Android viewports, Mitutoyo fixture): readings within
+0.05° of truth 134.646° with snap off; drag/lock/export verified; screenshots attached.
+
+**Known limitations for the reviewer:**
+- Readings are 2D-apparent image-plane angles; the UI says so explicitly. No calibration
+  or accuracy claim beyond the fixture checks above.
+- Snap-to-edge (when enabled) can select nearby features on busy parts — now OFF by
+  default with operator guidance; the algorithm itself is unchanged.
+- Portrait captures export 3:4 PNGs (was 16:9); landscape/desktop unchanged.
+- No real-device camera test in this environment (sandboxed browser, no camera).
+
+**Do not merge until:** independent review is recorded AND the owner approves the merge
+explicitly. After merge, the agreed next priorities are: Capacitor APK packaging
+(needs Android toolchain install approval), real Moto G Power camera testing, physical
+angle validation, then the manufacturing simulation workspace.

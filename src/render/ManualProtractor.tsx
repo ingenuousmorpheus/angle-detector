@@ -34,7 +34,10 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   const [history, setHistory] = useState<Placed[]>([]);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
-  const [snap, setSnap] = useState(true);
+  // Snap-to-edge defaults OFF: on a busy fixture it can pull a point onto a
+  // nearby strong edge (observed ~5.5 deg on the Mitutoyo render). The operator
+  // enables it explicitly per session after seeing where the raw taps land.
+  const [snap, setSnap] = useState(false);
   const [convention, setConvention] = useState<AngleConvention>('interior');
   const frameUrl = useMemo(() => frame.toDataURL('image/jpeg', 0.92), [frame]);
 
@@ -290,11 +293,14 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
             </div>
             <div className="hidden sm:block font-mono text-gray-400 text-xs md:text-sm">
               {conventionLabel(convention)} · interior {formatAngle(measurement.angleDeg)} · supplement{' '}
-              {formatAngle(measurement.supplementDeg)} · 2D apparent · manual
+              {formatAngle(measurement.supplementDeg)} · 2D apparent · manual · snap {snap ? 'on' : 'off'}
             </div>
             <div className="sm:hidden font-mono text-gray-400 text-xs">
-              {conventionLabel(convention)} · 2D apparent
+              {conventionLabel(convention)} · 2D apparent · snap {snap ? 'on' : 'off'}
             </div>
+            <p className="font-mono text-gray-500 text-[11px] mt-1 px-2">
+              Verify both edge points before trusting the angle. Snap may select nearby features.
+            </p>
           </div>
         ) : (
           <span className="font-mono text-yellow-400">{measurement?.reason}</span>
