@@ -256,3 +256,23 @@ headless-Chromium touch matrix (6 Android viewports, Mitutoyo fixture): readings
 explicitly. After merge, the agreed next priorities are: Capacitor APK packaging
 (needs Android toolchain install approval), real Moto G Power camera testing, physical
 angle validation, then the manufacturing simulation workspace.
+
+## §13 — Codex FAIL corrections (Session 012, 2026-10-09)
+
+Codex returned FAIL on PR #1 (reviewed commit `7951f2e`). Owner authorized
+corrections on this branch; committed locally as `a7a9616` (NOT pushed/merged).
+
+**P1 (mandatory) — rotation defect FIXED.** Root cause: frozen `<img>` used
+`w-full h-full` (stretch); points were container-normalized while geometry used
+image dimensions. Fix: `src/render/containRect.ts` — image letterboxed via
+explicit contain rect, points stored image-normalized. Geometry engine
+untouched. Browser-verified: 45° fixture measures 45.1° in portrait AND after
+rotation to landscape (image pillarboxed, angle invariant). Screenshots in
+`~/workspace/your_files/angle-detector-ui/p1-fix/`.
+
+**P2 (mandatory) — warning contrast FIXED.** 4.3:1 → 14.3:1 (text-gray-300).
+
+**Hardening:** `aria-pressed` on toggles, multitouch pointerId guard,
+convention label visible on mobile.
+
+**Status:** 60/60 tests, tsc/lint/build clean. Ready for Codex re-review.

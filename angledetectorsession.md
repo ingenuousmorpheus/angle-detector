@@ -886,3 +886,49 @@ Pedro decides: (a) authorize push of `d582223` so review covers the snap fix;
 review; (d) approve toolchain install for the APK. Exact next command once (a) is
 approved: `git push origin muse/angle-detector-industrial-ui` (from a machine with
 GitHub write access), then blob-verify.
+
+## Session 012 — AD-03 Codex FAIL corrections (2026-10-09)
+
+### Goal
+Owner-authorized (via Lana 1 relay): correct Codex FAIL defects on
+`muse/angle-detector-industrial-ui`. Local commits only; no push, no merge.
+
+### P1 — Frozen-frame rotation defect (root cause + fix)
+**Root cause:** `ManualProtractor` rendered the frozen `<img>` with
+`w-full h-full` (stretch to fill), while points were stored in
+container-normalized coords and the geometry engine used original image
+dimensions. Rotating after freeze (3:4 ↔ 16:9) distorted the image; a 45° bend
+no longer measured 45°.
+
+**Fix:** New `src/render/containRect.ts` (pure functions): `containRect`
+(object-contain rect), `toImageNorm` (container → image-normalized),
+`toContainerPx` (image-normalized → container). The `<img>` is explicitly
+positioned at the contain rect (letterboxed, never stretched). Points are now
+stored image-normalized; `toNorm`/`px`/hit-testing all go through the rect.
+Geometry engine, loupe, snap, and PNG export unchanged (they already consume
+image-normalized points × original dimensions).
+
+**Verification:**
+- 10 new tests in `tests/containRect.test.ts`: contain math, round-trip,
+  45° fixture across portrait→landscape→portrait, pre/post-rotation placement,
+  old-stretch-would-fail proof. All pass.
+- Browser (headless Chromium, 45° fixture, CDP taps): portrait 45.1°,
+  landscape (rotated) 45.1° — image letterboxed, angle invariant.
+  Screenshots: `~/workspace/your_files/angle-detector-ui/p1-fix/`.
+
+### P2 — Warning contrast
+`text-gray-500` (4.3:1, below 4.5:1) → `text-gray-300` (14.3:1 on black,
+8.6:1 pessimistic). Verified by computation.
+
+### Hardening
+- `aria-pressed` + `aria-label` on snap/lock/convention toggles.
+- Pointer drag tracks `activePointerId`; secondary touches ignored.
+- Convention label now visible on mobile (was `hidden sm:inline`).
+
+### Results
+60/60 tests (50 existing + 10 new), tsc clean, lint clean, build clean.
+Committed locally on `muse/angle-detector-industrial-ui`. NOT pushed, NOT merged.
+Phase 2 Live UI not started.
+
+### Gate
+Ready for Codex re-review. Awaiting owner: trigger re-review → merge approval.
