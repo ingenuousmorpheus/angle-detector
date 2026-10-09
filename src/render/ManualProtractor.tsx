@@ -7,6 +7,7 @@ import { snapToEdge } from '../vision/snapToEdge';
 import type { GrayImage } from '../vision/grayImage';
 import { exportAnnotated } from './exportAnnotated';
 import { conventionLabel, formatAngle, NEXT_CONVENTION } from './format';
+import { containRect, toContainerPx, toImageNorm, type Rect } from './containRect';
 
 /** Points in placement order: vertex, edge A, edge B. Normalized display-frame coordinates. */
 type Placed = [Vec2 | null, Vec2 | null, Vec2 | null];
@@ -34,9 +35,21 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   const [history, setHistory] = useState<Placed[]>([]);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
-  const [snap, setSnap] = useState(true);
+  // Snap-to-edge defaults OFF: on a busy fixture it can pull a point onto a
+  // nearby strong edge (observed ~5.5 deg on the Mitutoyo render). The operator
+  // enables it explicitly per session after seeing where the raw taps land.
+  const [snap, setSnap] = useState(false);
   const [convention, setConvention] = useState<AngleConvention>('interior');
   const frameUrl = useMemo(() => frame.toDataURL('image/jpeg', 0.92), [frame]);
+
+  // P1 fix: the frozen image keeps its intrinsic aspect ratio across orientation
+  // changes. imgRect is the object-contain rect of the frame inside the
+  // container; points are stored normalized in IMAGE coords, so rotating the
+  // device (which only re-letterboxes) cannot move a point relative to the image.
+  const imgRect: Rect = useMemo(
+    () => containRect(size.w, size.h, frame.width, frame.height),
+    [size.w, size.h, frame.width, frame.height],
+  );
 
   // Track the rendered size so the overlay never drifts on resize / orientation change.
   useEffect(() => {
@@ -55,10 +68,13 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   );
   useEffect(() => onMeasurement?.(measurement), [measurement, onMeasurement]);
 
-  const toNorm = useCallback((e: React.PointerEvent): Vec2 => {
-    const r = rootRef.current!.getBoundingClientRect();
-    return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) };
-  }, []);
+  const toNorm = useCallback(
+    (e: React.PointerEvent): Vec2 => {
+      const r = rootRef.current!.getBoundingClientRect();
+      return toImageNorm(e.clientX, e.clientY, r.left, r.top, imgRect);
+    },
+    [imgRect],
+  );
 
   const maybeSnap = useCallback(
     (p: Vec2, index: number): Vec2 => {
@@ -98,21 +114,25 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
     setPoints(next);
   }, [points]);
 
+  // Active pointer for the drag: secondary touches must not hijack it.
+  const activePointerId = useRef<number | null>(null);
+
   const onPointerDown = (e: React.PointerEvent) => {
-    if (locked) return;
+    if (locked || dragIndex !== null) return;
     const p = toNorm(e);
     const nextEmpty = points.findIndex((q) => q === null);
     let index = nextEmpty;
     if (index === -1) {
-      // all placed: grab the nearest handle
+      // all placed: grab the nearest handle (hit distance in displayed image px)
       let best = HANDLE_HIT_PX;
       points.forEach((q, i) => {
-        const d = Math.hypot((q!.x - p.x) * size.w, (q!.y - p.y) * size.h);
+        const d = Math.hypot((q!.x - p.x) * imgRect.w, (q!.y - p.y) * imgRect.h);
         if (d < best) { best = d; index = i; }
       });
       if (index === -1) return;
     }
     e.currentTarget.setPointerCapture(e.pointerId);
+    activePointerId.current = e.pointerId;
     setHistory((h) => [...h.slice(-49), points]);
     const next = [...points] as Placed;
     next[index] = p;
@@ -122,7 +142,7 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (dragIndex === null) return;
+    if (dragIndex === null || e.pointerId !== activePointerId.current) return;
     const p = toNorm(e);
     setPoints((prev) => {
       const next = [...prev] as Placed;
@@ -132,8 +152,9 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
     drawLoupe(p);
   };
 
-  const onPointerUp = () => {
-    if (dragIndex === null) return;
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (dragIndex === null || e.pointerId !== activePointerId.current) return;
+    activePointerId.current = null;
     const i = dragIndex;
     setPoints((prev) => {
       const next = [...prev] as Placed;
@@ -161,8 +182,8 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
     a.click();
   };
 
-  // ---- drawing (CSS pixels) ----
-  const px = (p: Vec2) => ({ x: p.x * size.w, y: p.y * size.h });
+  // ---- drawing (container CSS pixels, via the contain rect) ----
+  const px = useCallback((p: Vec2) => toContainerPx(p, imgRect), [imgRect]);
   const arcPath = (() => {
     if (!complete || !measurement?.found) return null;
     const v = px(vertex), a = px(edgeA), b = px(edgeB);
@@ -192,10 +213,23 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   const nextPrompt = points.findIndex((q) => q === null);
 
   const btn = 'flex items-center gap-1.5 px-3 h-11 rounded-md bg-black/70 hover:bg-black/90 text-sm font-semibold disabled:opacity-40';
+  // Icon-only toolbar on small screens: same buttons, handlers, order and
+  // 44px touch targets — the text labels just collapse below the sm breakpoint
+  // so the toolbar fits one row on a portrait phone instead of covering the frame.
+  const btnLabel = 'hidden sm:inline';
 
   return (
     <div ref={rootRef} className="absolute inset-0 z-40 select-none" style={{ touchAction: 'none' }}>
-      <img src={frameUrl} alt="Frozen frame" className="absolute inset-0 w-full h-full pointer-events-none" draggable={false} />
+      {/* P1: the frozen frame keeps its intrinsic aspect ratio (imgRect), never
+          stretched — letterboxed on rotation. Points are image-normalized, so
+          the overlay, loupe, snap, and export all stay geometrically correct. */}
+      <img
+        src={frameUrl}
+        alt="Frozen frame"
+        className="absolute pointer-events-none"
+        style={{ left: imgRect.x, top: imgRect.y, width: imgRect.w, height: imgRect.h }}
+        draggable={false}
+      />
 
       <svg
         className="absolute inset-0 w-full h-full"
@@ -244,35 +278,80 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
 
       <div className="absolute top-2 left-2 right-2 flex flex-wrap gap-2 justify-between pointer-events-auto">
         <div className="flex gap-2">
-          <button className={btn} onClick={onExit} title="Back to live camera"><Camera className="w-4 h-4" />Live</button>
+          <button className={btn} onClick={onExit} title="Back to live camera"><Camera className="w-4 h-4" /><span className={btnLabel}>Live</span></button>
           <button className={btn} onClick={undo} disabled={!history.length || locked} title="Undo"><Undo2 className="w-4 h-4" /></button>
           <button className={btn} onClick={reset} disabled={locked} title="Reset points"><RotateCcw className="w-4 h-4" /></button>
         </div>
         <div className="flex gap-2">
-          <button className={`${btn} ${snap ? 'text-cyan-300' : 'text-gray-400'}`} onClick={() => setSnap((s) => !s)} title="Snap edge points to the nearest strong edge">
-            <Magnet className="w-4 h-4" />Snap
+          <button
+            className={`${btn} ${snap ? 'text-cyan-300' : 'text-gray-400'}`}
+            onClick={() => setSnap((s) => !s)}
+            title="Snap edge points to the nearest strong edge"
+            aria-pressed={snap}
+            aria-label="Snap to edge"
+          >
+            <Magnet className="w-4 h-4" /><span className={btnLabel}>Snap</span>
           </button>
-          <button className={btn} onClick={() => setConvention((c) => NEXT_CONVENTION[c])} title="Interior / supplement / exterior">
-            <Repeat className="w-4 h-4" />{conventionLabel(convention)}
+          <button
+            className={btn}
+            onClick={() => setConvention((c) => NEXT_CONVENTION[c])}
+            title="Interior / supplement / exterior"
+            aria-label={`Angle convention: ${conventionLabel(convention)}. Activate to change.`}
+          >
+            <Repeat className="w-4 h-4" />
+            {/* Convention stays identifiable on mobile: the label is short. */}
+            <span className="text-xs sm:text-sm">{conventionLabel(convention)}</span>
           </button>
-          <button className={`${btn} ${locked ? 'text-yellow-300' : ''}`} onClick={() => setLocked((l) => !l)} disabled={!measurement?.found} title="Lock result">
-            {locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}{locked ? 'Locked' : 'Lock'}
+          <button
+            className={`${btn} ${locked ? 'text-yellow-300' : ''}`}
+            onClick={() => setLocked((l) => !l)}
+            disabled={!measurement?.found}
+            title="Lock result"
+            aria-pressed={locked}
+            aria-label={locked ? 'Unlock result' : 'Lock result'}
+          >
+            {locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}<span className={btnLabel}>{locked ? 'Locked' : 'Lock'}</span>
           </button>
-          <button className={btn} onClick={save} disabled={!measurement?.found} title="Save annotated photo"><Download className="w-4 h-4" /></button>
+          <button className={btn} onClick={save} disabled={!measurement?.found} title="Save annotated photo" aria-label="Save annotated photo"><Download className="w-4 h-4" /></button>
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-3 font-mono text-center pointer-events-none">
+      {/* Industrial measurement readout: large high-contrast digits for workshop
+          readability, plus explicit FROZEN / LOCKED status so a live reading is
+          never confused with a frozen measurement. Presentation only — the
+          numbers come from the unchanged AngleMeasurement contract. */}
+      <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-3 py-2.5 text-center pointer-events-none border-t border-white/10">
         {nextPrompt !== -1 ? (
-          <span className="text-cyan-300">{PROMPTS[nextPrompt]}</span>
+          <span className="font-mono text-cyan-300 text-lg">{PROMPTS[nextPrompt]}</span>
         ) : measurement?.found ? (
-          <>
-            <span className="font-bold text-xl text-yellow-200">{formatAngle(measurement.displayDeg)}</span>
-            <span className="text-gray-300"> {conventionLabel(convention)}</span>
-            <span className="text-gray-400 text-sm"> · interior {formatAngle(measurement.angleDeg)} · supplement {formatAngle(measurement.supplementDeg)} · mode: 2D apparent · manual</span>
-          </>
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-amber-300 bg-amber-400/15 border border-amber-300/40 rounded px-2 py-0.5">
+                Frozen
+              </span>
+              {locked && (
+                <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-lime-300 bg-lime-400/15 border border-lime-300/40 rounded px-2 py-0.5">
+                  Locked
+                </span>
+              )}
+              <span className="font-mono font-bold tabular-nums text-yellow-200 text-4xl md:text-5xl leading-none">
+                {formatAngle(measurement.displayDeg)}
+              </span>
+            </div>
+            <div className="hidden sm:block font-mono text-gray-400 text-xs md:text-sm">
+              {conventionLabel(convention)} · interior {formatAngle(measurement.angleDeg)} · supplement{' '}
+              {formatAngle(measurement.supplementDeg)} · 2D apparent · manual · snap {snap ? 'on' : 'off'}
+            </div>
+            <div className="sm:hidden font-mono text-gray-400 text-xs">
+              {conventionLabel(convention)} · 2D apparent · snap {snap ? 'on' : 'off'}
+            </div>
+            {/* P2: warning meets 4.5:1 contrast (text-gray-300 on near-black). */}
+            <p className="font-mono text-gray-300 text-[11px] mt-1 px-2">
+              Verify both edge points before trusting the angle. Snap may select nearby features.
+            </p>
+          </div>
         ) : (
-          <span className="text-yellow-400">{measurement?.reason}</span>
+          <span className="font-mono text-yellow-400">{measurement?.reason}</span>
         )}
       </div>
     </div>

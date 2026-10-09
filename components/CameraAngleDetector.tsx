@@ -172,7 +172,12 @@ const CameraAngleDetector: React.FC = () => {
 
     return (
         <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
-            <div ref={containerRef} className="relative w-full aspect-video bg-gray-800 rounded-lg shadow-2xl overflow-hidden border-2 border-gray-700">
+            {/* Portrait phones/tablets get a taller frame (3:4) so the workpiece stays
+                visible behind the toolbar and readout; landscape/desktop keep 16:9.
+                Capture uses the tested coverCrop at whatever aspect is displayed,
+                and the angle is computed from normalized points in pixel space,
+                so the math is aspect-independent. */}
+            <div ref={containerRef} className="relative w-full aspect-video portrait:aspect-[3/4] bg-gray-800 rounded-lg shadow-2xl overflow-hidden border-2 border-gray-700">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover"></video>
 
                 {!isCameraOn && !frozen && (

@@ -1,0 +1,278 @@
+# MUSE_ANGLE_DETECTOR_HANDOFF.md
+
+Continuity record for Muse's industrial-UI trial on the Angle Detector project.
+Written 2026-10-08. Existing project docs (`README.md`, `angledetectorsession.md`,
+`docs/BASELINE.md`) were not modified.
+
+## 1. Verified repository state
+
+- Repository: https://github.com/ingenuousmorpheus/angle-detector
+- Base: `main` @ `cb5733e` ("AD-02: manual freeze-frame protractor …")
+- Branch: `muse/angle-detector-industrial-ui` (one commit, see §4)
+- Stack: React 19 + Vite 6 + TypeScript, Tailwind via CDN play script,
+  `lucide-react` icons, `@google/genai` (optional). `npm run lint` = `tsc --noEmit`.
+- App entry: `index.html` → `index.tsx` → `App.tsx` → `components/CameraAngleDetector.tsx`
+  → frozen mode renders `src/render/ManualProtractor.tsx`; AI overlay is
+  `components/AngleDisplay.tsx`.
+
+### Measurement architecture (untouched — safety boundaries honored)
+
+- `src/geometry/angle2d.ts` — deterministic atan2 angle math (never acos).
+- `src/geometry/lineFit.ts` — TLS line fit.
+- `src/measurement/measureFromPoints.ts` — pure `AngleMeasurement` contract
+  (`found`, `angleDeg`, `supplementDeg`, `displayDeg`, `convention`,
+  `confidence` from arm length only, `mode: 'apparent-2d'`, `source`).
+- `src/vision/` — luma/Sobel + edge snap (fails closed: no edge → no snap).
+- `src/render/format.ts` — `formatAngle`: one decimal, presentation only.
+- `services/geminiService.ts` — optional AI; app loads and measures without a key;
+  AI numbers are labeled "AI estimate (unverified)".
+- Tests: `tests/` — 50 tests (fixtures, geometry, snap). Fixtures:
+  `fixtures/synthetic/` (constructed angles) and
+  `fixtures/mitutoyo-digital-protractor/` (truth 134.65° ± 0.9° interior).
+
+### Remote branch assessment (no conflict)
+
+`origin/claude/angle-detection-protractor-PqWCi` exists but is stale
+(last commit 2026-02-20, predates the AD-00…AD-02 rewrite) and unmerged.
+It does not touch the current `ManualProtractor` code path and is not active
+development. Work proceeded on `main` as instructed; the branch was left alone.
+
+## 2. Design assessment (manufacturing use)
+
+Evaluated against the Phase 2 criteria. Findings:
+
+1. **Readout size** — the frozen-mode angle was `text-xl` (20px): too small to read
+   at arm's length in a workshop. → **Fixed by this change.**
+2. **Live vs frozen distinction** — frozen mode had no explicit status indicator;
+   only the prompt text implied the mode. → **Fixed by this change** (FROZEN chip,
+   plus LOCKED chip when the result is locked).
+3. **Contrast** — dark theme with yellow/cyan on black is already workshop-suitable.
+   Kept.
+4. **Touch targets** — main buttons are large rounded-full; protractor toolbar is
+   `h-11` (44px), the accepted minimum. Not changed in this pass.
+5. **Confidence** — the engine exposes `confidence` (arm-length based), but the
+   session log explicitly defers the confidence/quality gate to AD-04. The raw
+   number was deliberately NOT surfaced, to avoid implying accuracy the project
+   has not validated.
+6. **Portrait-phone layout (known issue, not fixed)** — on a 390px phone the
+   frozen frame is `aspect-video` (≈354×197px); the two-row toolbar and the
+   readout bar together cover almost the entire frame (see `angle-390.png`).
+   Tapping the upper half of the frame can hit toolbar buttons instead of
+   placing points. Recommended next improvement: portrait layout with a taller
+   frame and/or collapsible toolbar.
+
+## 3. Work completed
+
+One small, reversible, presentation-only change in
+`src/render/ManualProtractor.tsx` (bottom readout bar only, +26/−8):
+
+- Angle digits enlarged: `text-4xl md:text-5xl`, `font-mono font-bold tabular-nums`,
+  high-contrast `text-yellow-200`.
+- Added an explicit **FROZEN** status chip (amber) — a frozen measurement can never
+  be mistaken for a live reading.
+- Added a **LOCKED** chip (lime) shown only when the operator locks the result.
+- Secondary details (convention, interior, supplement, "2D apparent · manual")
+  kept on a smaller second line; prompt and no-measurement states unchanged
+  apart from slightly larger prompt text.
+- No new dependencies. No changes to geometry, detection, calibration, tolerances,
+  units, fixtures, prompts, or instructions.
+
+## 4. Files changed
+
+- `src/render/ManualProtractor.tsx` — bottom readout bar JSX only.
+- Local commit `1616563`; pushed as `4db8a66` on
+  `muse/angle-detector-industrial-ui` (pushed blob SHA verified identical).
+- Draft PR: **https://github.com/ingenuousmorpheus/angle-detector/pull/1**
+  — "Angle Detector — industrial measurement readout (AD-03)", base `main`,
+  draft. Not merged, per instructions.
+
+## 5. Tests performed
+
+- `npm run lint` (`tsc --noEmit`) — clean.
+- `npm test` (vitest) — **50/50 pass** (`fixtures`, `geometry`, `snap`).
+- `npm run build` (vite) — clean.
+- `git diff --stat` confirms the only modified file is the readout component;
+  `src/geometry/`, `src/measurement/`, `src/vision/`, `services/`, `tests/`,
+  fixtures untouched.
+- Browser verification (headless Chromium, Tailwind inlined locally since the
+  CDN was unreachable from the test browser): loaded the app, fed the Mitutoyo
+  fixture photo through the file-input path, placed vertex + two edge points
+  with trusted pointer input at each width, and screenshotted:
+  - 1440px desktop — FROZEN + 146.1°, toolbar single row.
+  - 768px tablet — FROZEN + 146.4°.
+  - 430px mobile — FROZEN + 149.2°, details wrap to two lines, legible.
+  - 390px mobile — FROZEN + 150.3°; toolbar wraps to two rows (pre-existing).
+- The on-screen numbers above verify the *readout UI*, not measurement accuracy:
+  taps were placed by the test harness, not on the fixture's true blade geometry.
+  Measurement accuracy is established only by the 50 unit tests and the AD-00…
+  AD-02 validation records — automated tests are not calibrated measurement.
+
+## 6. Known issues
+
+- Portrait-phone frame crowding (§2.6) — pre-existing, documented, not introduced
+  by this change.
+- Test-harness note: synthetic (untrusted) `PointerEvent`s dispatched via CDP
+  misbehaved with the component's pointer-capture flow; real trusted mouse input
+  works exactly as designed. Not an app bug.
+- The app was verified against a local standalone build; the dev-server +
+  `?photo=` flow from the session log was not re-run (same code path exercised).
+
+## 7. Screenshots
+
+`~/workspace/your_files/angle-detector-ui/`:
+`angle-1440.png`, `angle-768.png`, `angle-430.png`, `angle-390.png`.
+
+## 8. Recommended next improvement
+
+Portrait-phone measurement layout: give the frozen frame more vertical room
+(taller than `aspect-video` on portrait, collapsible toolbar rows), so the
+operator can see and tap the workpiece instead of UI chrome. Bounded,
+presentation-only, same safety boundaries.
+
+## 9. Human approval requirements
+
+- Owner reviews the screenshots on a phone and confirms the readout is readable
+  in workshop lighting.
+- Independent code review of the one-file diff (presentation only).
+- Do not merge until both are done. No deploy step exists for this repo.
+- Any future work touching `src/geometry`, `src/measurement`, `src/vision`,
+  AI prompts, or calibration values needs the owner's explicit approval and
+  must re-run the full test suite plus the fixture-based browser check from
+  `angledetectorsession.md` Session 003.
+
+## 10. AD-03 follow-up — portrait usability (2026-10-08)
+
+Assigned follow-up on the same branch, targeting the documented 390px issue
+(§2.6 / §6): the two-row toolbar and readout bar covered nearly the entire
+`aspect-video` frozen frame on portrait phones.
+
+### Changes (presentation only)
+
+- `components/CameraAngleDetector.tsx` — frame container is now
+  `aspect-video portrait:aspect-[3/4]`: portrait phones/tablets get a taller
+  frame; landscape and desktop keep 16:9. Capture uses the tested `coverCrop`
+  at whatever aspect is displayed, and the angle is computed from normalized
+  points converted to pixels, so the math is aspect-independent. Visible
+  consequence: annotated PNG exports from portrait captures are 3:4.
+- `src/render/ManualProtractor.tsx` —
+  - Toolbar buttons are icon-only below the `sm` breakpoint (labels
+    `hidden sm:inline`): same buttons, handlers, order, and 44px touch
+    targets; `title` attributes already present. One row on a 390px phone.
+  - Readout details collapse on small screens to a one-liner
+    ("interior · 2D apparent"); the full detail line stays on `sm+`.
+    Angle, FROZEN, and LOCKED indicators unchanged and fully readable.
+
+### Verification
+
+- `npm run lint` clean, `npm test` 50/50 pass, `npm run build` clean.
+- `git diff`: only the two files above; no measurement/vision/service/test changes.
+- Headless-Chromium checks with the Mitutoyo fixture + 3 placed points:
+  - 390px: frame 354×473 (was 354×197); one-row icon toolbar; FROZEN + 99.7°.
+  - 430px: frame 394×527; FROZEN + 98.9°.
+  - 768px portrait tablet: frame 717×957; FROZEN + 101.3°.
+  - 1440px desktop: unchanged 16:9 (892×500); text labels and full details
+    line render as before; FROZEN + 141.1°.
+- Screenshots: `~/workspace/your_files/angle-detector-ui/angle-*-v2.png`.
+- On-screen numbers verify the readout UI, not measurement accuracy.
+
+### Design tradeoff note
+
+The taller portrait frame was chosen over alternatives (collapsible toolbar,
+floating readout) because it directly gives the operator a practical view of
+the workpiece with the least interaction complexity. The only product-visible
+consequence is the 3:4 export aspect on portrait captures. No safe-resolution
+blocker was found; nothing was guessed.
+
+- Owner reviews the screenshots on a phone and confirms the readout is readable
+  in workshop lighting.
+- Independent code review of the one-file diff (presentation only).
+- Do not merge until both are done. No deploy step exists for this repo.
+- Any future work touching `src/geometry`, `src/measurement`, `src/vision`,
+  AI prompts, or calibration values needs the owner's explicit approval and
+  must re-run the full test suite plus the fixture-based browser check from
+  `angledetectorsession.md` Session 003.
+
+## 11. AD-03 safety refinement — snap defaults OFF (2026-10-09)
+
+Owner-authorized refinement (via Lana 1 relay, explicit approval; no push/merge/deploy).
+
+**Change** (`src/render/ManualProtractor.tsx` only):
+- Snap-to-edge now defaults OFF for new measurement sessions (`useState(false)`).
+  It remains an explicit per-session operator toggle (magnet button; cyan = on, gray = off).
+- Readout details line now reports snap status: `… · 2D apparent · snap on/off`
+  (desktop full line and mobile one-liner).
+- New operator guidance under the reading: "Verify both edge points before trusting
+  the angle. Snap may select nearby features."
+- Geometry, measurement contract, vision, and snap algorithm untouched.
+
+**Why:** Session 006 touch tests showed snap-ON pulling scripted taps ~5.5° off fixture
+truth on the busy Mitutoyo render (129.1° vs 134.646°). Snap-off taps on the same
+points read 134.7° — the engine is exact; the risk is purely point placement on
+detailed parts. Default-off makes the safe behavior the default.
+
+**Verification (2026-10-09):**
+- `npm test` 50/50, `npm run lint` clean, `npm run build` clean.
+- 7/7 snap checks: defaults OFF (magnet gray), taps → 134.7° ≈ truth, readout shows
+  "snap off", guidance visible, toggle enables (magnet cyan, "snap on"), reset clears
+  points and restores the placement prompt.
+- Full 6-viewport touch matrix re-run (360×800, 393×873, 412×915, 430×932 portrait;
+  800×360, 932×430 landscape): all 6 read within 0.05° of truth, drag/lock/export pass,
+  no horizontal overflow, 44px-tall targets. Zero failures.
+- Screenshots: `~/workspace/your_files/angle-detector-ui/android-*.png`.
+
+## 12. PR #1 reviewer handoff
+
+**Branch:** `muse/angle-detector-industrial-ui` → `main`. **Status:** draft, unmerged.
+**Scope:** presentation-only. Five local commits on top of main (`cb5733e`):
+1. `1616563` — industrial measurement readout (large digits, FROZEN/LOCKED chips).
+2. `4cb5151` (+ API re-push `2a69f8c2`, tree-identical) — portrait follow-up: 3:4 frame
+   on portrait, icon-only toolbar below `sm`, one-line readout details.
+   (`06b9e85` recorded the push in the handoff — docs only.)
+3. `d582223` — snap defaults OFF + snap status/guidance in readout (+ `bc146f1`
+   session log — docs only).
+**Note:** commits 3 (and the docs-only ones) exist only locally as of Session 008 —
+PR #1's remote scope is items 1–2 until the branch is pushed (needs Pedro's
+separate authorization).
+
+**What to review:** `src/render/ManualProtractor.tsx` (readout, toolbar, snap default),
+`components/CameraAngleDetector.tsx` (frame aspect only). Handoff docs.
+
+**What NOT to review for behavior:** `src/geometry/`, `src/measurement/`, `src/vision/`,
+services, fixtures, tests — untouched. No new dependencies.
+
+**Test evidence:** `npm test` 50/50, `npm run lint` clean, `npm run build` clean;
+headless-Chromium touch matrix (6 Android viewports, Mitutoyo fixture): readings within
+0.05° of truth 134.646° with snap off; drag/lock/export verified; screenshots attached.
+
+**Known limitations for the reviewer:**
+- Readings are 2D-apparent image-plane angles; the UI says so explicitly. No calibration
+  or accuracy claim beyond the fixture checks above.
+- Snap-to-edge (when enabled) can select nearby features on busy parts — now OFF by
+  default with operator guidance; the algorithm itself is unchanged.
+- Portrait captures export 3:4 PNGs (was 16:9); landscape/desktop unchanged.
+- No real-device camera test in this environment (sandboxed browser, no camera).
+
+**Do not merge until:** independent review is recorded AND the owner approves the merge
+explicitly. After merge, the agreed next priorities are: Capacitor APK packaging
+(needs Android toolchain install approval), real Moto G Power camera testing, physical
+angle validation, then the manufacturing simulation workspace.
+
+## §13 — Codex FAIL corrections (Session 012, 2026-10-09)
+
+Codex returned FAIL on PR #1 (reviewed commit `7951f2e`). Owner authorized
+corrections on this branch; committed locally as `a7a9616` (NOT pushed/merged).
+
+**P1 (mandatory) — rotation defect FIXED.** Root cause: frozen `<img>` used
+`w-full h-full` (stretch); points were container-normalized while geometry used
+image dimensions. Fix: `src/render/containRect.ts` — image letterboxed via
+explicit contain rect, points stored image-normalized. Geometry engine
+untouched. Browser-verified: 45° fixture measures 45.1° in portrait AND after
+rotation to landscape (image pillarboxed, angle invariant). Screenshots in
+`~/workspace/your_files/angle-detector-ui/p1-fix/`.
+
+**P2 (mandatory) — warning contrast FIXED.** 4.3:1 → 14.3:1 (text-gray-300).
+
+**Hardening:** `aria-pressed` on toggles, multitouch pointerId guard,
+convention label visible on mobile.
+
+**Status:** 60/60 tests, tsc/lint/build clean. Ready for Codex re-review.
