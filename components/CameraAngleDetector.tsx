@@ -3,18 +3,32 @@ import { analyzeImageAngle, isAiAvailable } from '../services/geminiService';
 import type { AngleAnalysisResult } from '../types';
 import AngleDisplay from './AngleDisplay';
 import ManualProtractor from '../src/render/ManualProtractor';
+import MitutoyoOverlay from '../src/ar/MitutoyoOverlay';
 import { coverCrop } from '../src/camera/cameraTransform';
 import { rgbaToGray, type GrayImage } from '../src/vision/grayImage';
 import type { Vec2 } from '../src/geometry/angle2d';
-import { Camera, Zap, AlertTriangle, Loader, Crosshair, ImageUp, Ruler } from 'lucide-react';
+import { Camera, Zap, AlertTriangle, Loader, Crosshair, ImageUp, Ruler, Focus } from 'lucide-react';
 
 interface FrozenFrame {
     canvas: HTMLCanvasElement;
     gray: GrayImage;
     initial: [Vec2, Vec2, Vec2] | null;
+    /** Opened with AR Lock: show the 3D Mitutoyo protractor on the measurement. */
+    ar: boolean;
 }
 
 const MAX_FRAME_DPR = 2;
+
+/** AR Lock start: vertex on the crosshair, arms 120° apart, as normalized [edgeA, vertex, edgeB]. */
+const arStartPoints = (w: number, h: number): [Vec2, Vec2, Vec2] => {
+    const r = 0.28 * Math.min(w, h);
+    const n = (x: number, y: number): Vec2 => ({ x: x / w, y: y / h });
+    return [
+        n(w / 2 - r, h / 2),
+        n(w / 2, h / 2),
+        n(w / 2 + r * Math.cos(Math.PI / 3), h / 2 - r * Math.sin(Math.PI / 3)),
+    ];
+};
 
 const CameraAngleDetector: React.FC = () => {
     const [isCameraOn, setIsCameraOn] = useState<boolean>(false);
@@ -28,6 +42,16 @@ const CameraAngleDetector: React.FC = () => {
     const fileRef = useRef<HTMLInputElement>(null);
     const lastAnalyzedFrame = useRef<HTMLCanvasElement | null>(null);
     const resultTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [box, setBox] = useState({ w: 0, h: 0 });
+
+    // Container size for the AR overlay.
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver(([entry]) => setBox({ w: entry.contentRect.width, h: entry.contentRect.height }));
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
     const startCamera = useCallback(async () => {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -84,11 +108,11 @@ const CameraAngleDetector: React.FC = () => {
         return canvas;
     }, []);
 
-    const freezeFrom = useCallback((canvas: HTMLCanvasElement, initial: [Vec2, Vec2, Vec2] | null = null) => {
+    const freezeFrom = useCallback((canvas: HTMLCanvasElement, initial: [Vec2, Vec2, Vec2] | null = null, ar = false) => {
         const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
         const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
         setAnalysisResult(null);
-        setFrozen({ canvas, gray: rgbaToGray(data, canvas.width, canvas.height), initial });
+        setFrozen({ canvas, gray: rgbaToGray(data, canvas.width, canvas.height), initial, ar });
     }, []);
 
     const handleFreeze = useCallback(() => {
@@ -97,6 +121,19 @@ const CameraAngleDetector: React.FC = () => {
         const scale = Math.min(MAX_FRAME_DPR, window.devicePixelRatio || 1);
         const canvas = captureCover(video, video.videoWidth, video.videoHeight, scale);
         if (canvas) freezeFrom(canvas);
+    }, [captureCover, freezeFrom]);
+
+    /**
+     * AR Lock: freeze with the vertex on the crosshair and both arms pre-placed
+     * (120° apart) so the operator only drags each arm handle onto its edge.
+     * The angle is still computed by measureFromPoints from those points.
+     */
+    const handleArLock = useCallback(() => {
+        const video = videoRef.current;
+        if (!video) return;
+        const scale = Math.min(MAX_FRAME_DPR, window.devicePixelRatio || 1);
+        const canvas = captureCover(video, video.videoWidth, video.videoHeight, scale);
+        if (canvas) freezeFrom(canvas, arStartPoints(canvas.width, canvas.height), true);
     }, [captureCover, freezeFrom]);
 
     const handlePhoto = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,13 +153,15 @@ const CameraAngleDetector: React.FC = () => {
 
     // `?photo=<url>` opens an image straight into manual mode (fixtures, field photos, testing).
     useEffect(() => {
-        const url = new URLSearchParams(window.location.search).get('photo');
+        const params = new URLSearchParams(window.location.search);
+        const url = params.get('photo');
+        const ar = params.get('ar') === '1';
         if (!url) return;
         const img = new Image();
         img.onload = () => {
             const scale = Math.min(MAX_FRAME_DPR, window.devicePixelRatio || 1);
             const canvas = captureCover(img, img.naturalWidth, img.naturalHeight, scale);
-            if (canvas) freezeFrom(canvas);
+            if (canvas) freezeFrom(canvas, ar ? arStartPoints(canvas.width, canvas.height) : null, ar);
         };
         img.onerror = () => setError(`Could not open ${url}`);
         img.src = url;
@@ -205,6 +244,15 @@ const CameraAngleDetector: React.FC = () => {
                     <AngleDisplay result={analysisResult} videoElement={videoRef.current} />
                 )}
 
+                {isCameraOn && !frozen && box.w > 0 && (
+                    <div className="absolute inset-0 z-[15] pointer-events-none">
+                        <MitutoyoOverlay width={box.w} height={box.h} vertex={null} edgeA={null} edgeB={null} displayDeg={null} />
+                        <p className="absolute top-2 left-0 right-0 text-center font-mono text-xs text-cyan-200/90">
+                            Aim the bend at the crosshair, then tap AR Lock
+                        </p>
+                    </div>
+                )}
+
                 {!frozen && (
                     <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                         <div className="w-24 h-24 md:w-32 md:h-32 border-2 border-cyan-400 border-dashed rounded-full opacity-50"></div>
@@ -218,6 +266,17 @@ const CameraAngleDetector: React.FC = () => {
                         gray={frozen.gray}
                         initial={frozen.initial}
                         onExit={() => setFrozen(null)}
+                        overlay={frozen.ar ? (g) => (
+                            <MitutoyoOverlay
+                                width={g.width}
+                                height={g.height}
+                                vertex={g.vertex}
+                                edgeA={g.edgeA}
+                                edgeB={g.edgeB}
+                                displayDeg={g.measurement?.found ? g.measurement.displayDeg : null}
+                                locked={g.locked}
+                            />
+                        ) : undefined}
                     />
                 )}
 
@@ -252,6 +311,14 @@ const CameraAngleDetector: React.FC = () => {
 
             {!frozen && (
                 <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                    <button
+                        onClick={handleArLock}
+                        disabled={!isCameraOn}
+                        className="flex items-center justify-center space-x-3 px-8 py-4 bg-cyan-400 text-gray-900 font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:bg-cyan-300 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:scale-100"
+                    >
+                        <Focus className="w-6 h-6" />
+                        <span>AR Lock</span>
+                    </button>
                     <button
                         onClick={handleFreeze}
                         disabled={!isCameraOn}

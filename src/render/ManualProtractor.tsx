@@ -25,9 +25,25 @@ interface ManualProtractorProps {
   initial?: [Vec2, Vec2, Vec2] | null;
   onExit: () => void;
   onMeasurement?: (m: AngleMeasurement | null) => void;
+  /**
+   * Optional presentation layer drawn between the frozen frame and the edge lines
+   * (e.g. the AR Mitutoyo protractor). Receives container-px geometry; it cannot
+   * change the points or the measurement.
+   */
+  overlay?: (g: ProtractorOverlayGeometry) => React.ReactNode;
 }
 
-const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initial, onExit, onMeasurement }) => {
+export interface ProtractorOverlayGeometry {
+  width: number;
+  height: number;
+  vertex: Vec2 | null;
+  edgeA: Vec2 | null;
+  edgeB: Vec2 | null;
+  measurement: AngleMeasurement | null;
+  locked: boolean;
+}
+
+const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initial, onExit, onMeasurement, overlay }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const loupeRef = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -185,7 +201,7 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   // ---- drawing (container CSS pixels, via the contain rect) ----
   const px = useCallback((p: Vec2) => toContainerPx(p, imgRect), [imgRect]);
   const arcPath = (() => {
-    if (!complete || !measurement?.found) return null;
+    if (!complete || !measurement?.found || size.w === 0) return null; // not laid out yet
     const v = px(vertex), a = px(edgeA), b = px(edgeB);
     const ua = sub(a, v), ub = sub(b, v);
     const r = Math.min(48, 0.45 * Math.hypot(ua.x, ua.y), 0.45 * Math.hypot(ub.x, ub.y));
@@ -231,6 +247,16 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
         draggable={false}
       />
 
+      {overlay?.({
+        width: size.w,
+        height: size.h,
+        vertex: vertex ? px(vertex) : null,
+        edgeA: edgeA ? px(edgeA) : null,
+        edgeB: edgeB ? px(edgeB) : null,
+        measurement,
+        locked,
+      })}
+
       <svg
         className="absolute inset-0 w-full h-full"
         viewBox={`0 0 ${size.w || 1} ${size.h || 1}`}
@@ -246,6 +272,8 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
           </filter>
         </defs>
         <rect width="100%" height="100%" fill="transparent" />
+        {/* nothing to draw until the frame is laid out (avoids a one-frame NaN/oversized flash) */}
+        {size.w > 0 && (<>
         {vertex && edgeA && (
           <line x1={px(vertex).x} y1={px(vertex).y} x2={px(edgeA).x} y2={px(edgeA).y} stroke="#67e8f9" strokeWidth={3} strokeLinecap="round" filter="url(#mp-glow)" />
         )}
@@ -266,6 +294,7 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
             {formatAngle(measurement.displayDeg)}
           </text>
         )}
+        </>)}
       </svg>
 
       <canvas

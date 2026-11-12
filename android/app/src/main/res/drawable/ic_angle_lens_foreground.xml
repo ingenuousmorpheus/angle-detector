@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Angle Lens launcher icon: two measured edges meeting at a vertex, with an angle arc. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- protractor scale -->
+    <path android:pathData="M70,72 A36,36 0 0,0 34,36"
+        android:strokeColor="#475569" android:strokeWidth="3" android:strokeLineCap="round"/>
+    <path android:pathData="M58.7,46.3 L61.6,43.4 M65.2,54 L69.0,52.5 M50,40.7 L51.6,36.9"
+        android:strokeColor="#475569" android:strokeWidth="2.5" android:strokeLineCap="round"/>
+    <!-- angle arc -->
+    <path android:pathData="M56,72 A22,22 0 0,0 48.14,55.15"
+        android:strokeColor="#FBBF24" android:strokeWidth="5" android:strokeLineCap="round"/>
+    <!-- measured edges -->
+    <path android:pathData="M78,72 L34,72 L62.3,38.3"
+        android:strokeColor="#22D3EE" android:strokeWidth="6"
+        android:strokeLineCap="round" android:strokeLineJoin="round"/>
+    <!-- vertex -->
+    <path android:pathData="M34,72 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0"
+        android:fillColor="#FFFFFF"/>
+</vector>
