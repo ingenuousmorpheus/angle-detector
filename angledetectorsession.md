@@ -612,3 +612,323 @@ Lazy Gemini client. The decision not to snap the vertex.
 
 ### Next Action
 Run the browser check above; then AD-04 confidence/quality gate.
+
+## Session 004 — AD-03 Industrial Measurement Readout (UI trial)
+
+### Goal
+Bounded presentation-only improvement: a workshop-readable measurement readout for the
+manual freeze-frame protractor (large digits, explicit FROZEN/LOCKED chips). No geometry,
+measurement, vision, calibration, or AI changes.
+
+### Starting State
+AD-02 manual protractor on main (`cb5733e`); branch `muse/angle-detector-industrial-ui`
+created for the trial.
+
+### Changed
+- `src/render/ManualProtractor.tsx` — bottom readout bar only: angle digits `text-4xl
+  md:text-5xl` monospace tabular-nums, high-contrast yellow on black; explicit **FROZEN**
+  chip (amber); **LOCKED** chip (lime, only when locked); secondary details (convention,
+  interior, supplement, "2D apparent · manual") on a smaller second line.
+- `MUSE_ANGLE_DETECTOR_HANDOFF.md` (new) — continuity record.
+- The engine's raw `confidence` value was deliberately NOT surfaced (AD-04 gate pending).
+
+### Verification
+- `npm run lint` clean, `npm test` 50/50 pass, `npm run build` clean.
+- Headless-Chromium checks at 390/430/768/1440px with the Mitutoyo fixture: frozen frame
+  → 3 placed points → readout renders at every width (screenshots `angle-*.png`).
+
+### Result
+COMPLETE. Draft PR #1 opened (not merged).
+
+### Findings
+- On 390px portrait phones the two-row toolbar + readout bar cover most of the
+  `aspect-video` frozen frame — documented as the known issue for the follow-up.
+- Naming note: the branch/PR label this "AD-03", but the roadmap's AD-03 (automatic
+  edge detection) is NOT done; this session was presentation-only.
+
+### Gate/Blocker
+Independent review of PR #1 (presentation-only diff).
+
+### Do Not Redo
+The readout component diff; the decision to keep `confidence` unsurfaced.
+
+### Next Action
+Portrait-usability follow-up for the 390px crowding (Session 005).
+
+## Session 005 — AD-03 Portrait Usability Follow-up
+
+### Goal
+Fix the documented 390px portrait issue: toolbar + readout obstructing the frozen camera
+frame. Keep angle/FROZEN/LOCKED readable; preserve measurement math, point placement,
+calibration, fixtures, safety boundaries.
+
+### Starting State
+Session 004 on branch `muse/angle-detector-industrial-ui` (PR #1 draft, unmerged).
+
+### Changed
+- `components/CameraAngleDetector.tsx` — frame container `aspect-video` →
+  `aspect-video portrait:aspect-[3/4]`: portrait phones/tablets get a taller frame
+  (390px: 354×197 → 354×473); landscape/desktop keep 16:9. Capture uses the tested
+  `coverCrop` at the displayed aspect; angle math is aspect-independent.
+- `src/render/ManualProtractor.tsx` — toolbar icon-only below `sm` (same buttons,
+  handlers, order; 44px-tall targets; `title` attributes kept); readout details collapse
+  to a one-liner on small screens.
+- Handoff §10 with verification and the design tradeoff note.
+
+### Verification
+- `npm run lint` clean, `npm test` 50/50 pass, `npm run build` clean.
+- Headless-Chromium checks at 390/430/768/1440px with the Mitutoyo fixture + 3 placed
+  points (screenshots `angle-*-v2.png`).
+
+### Result
+COMPLETE. Pushed; PR #1 body updated with the follow-up section; still draft, not merged.
+(Remote head `2a69f8c2` is a CRLF-preserving API re-push; its tree is identical to local
+`4cb5151`.)
+
+### Findings
+- Product tradeoff: annotated PNG exports from portrait captures are now 3:4 (was 16:9);
+  landscape/desktop unchanged. Measurement unaffected (coverCrop at displayed aspect,
+  aspect-independent angle math).
+
+### Gate/Blocker
+Independent review of PR #1 (now covers both the readout and the portrait follow-up).
+
+### Do Not Redo
+The 3:4 portrait frame decision; the icon-only toolbar below `sm`.
+
+### Next Action
+Android-first validation of the existing interface (Session 006). Do NOT start the
+simulation workspace until AD-03 is reviewed and stable.
+
+## Session 006 — Android-First Validation (2026-10-09)
+
+### Goal
+Per owner authorization: finish and validate the existing AD-03 work first — no new
+multi-phase build, no simulation workspace, no push/merge/deploy, no SDK installs. Validate
+the existing interface at Android phone sizes with touch input; check APK packaging
+feasibility without installing anything.
+
+### Starting State
+Branch `muse/angle-detector-industrial-ui` (local `4cb5151`, tree-identical to remote
+`2a69f8c2`); PR #1 draft, open, unmerged, body includes the follow-up section; no review
+comments visible publicly. Working tree clean.
+
+### Changed
+- `angledetectorsession.md` — this entry. No app code changed (nothing to fix).
+
+### Verification
+- `npm test`: 50/50 pass. `npm run lint` clean. `npm run build` clean.
+- Browser device emulation (headless Chromium, touch input, DPR set) at 360×800,
+  393×873, 412×915, 430×932 portrait + 800×360, 932×430 landscape, Mitutoyo fixture via
+  the file-input path, 3 blade-aligned touch taps per viewport:
+  - Frozen frame renders at every size (portrait 3:4, landscape 16:9); tap → angle
+    reading appears; touch-drag on a handle changes the reading; Lock → LOCKED chip;
+    annotated PNG export downloads (0.5–0.9 MB files).
+  - No horizontal overflow at any size; toolbar buttons 44px tall (40px wide icon-only).
+  - Measurement integrity: landscape taps → **133.8°** vs fixture truth **134.646° ± 0.9°**
+    (inside uncertainty); portrait taps with snap OFF → **134.7°** (inside uncertainty).
+    Geometry engine vindicated end-to-end through the touch pipeline.
+  - Screenshots: `~/workspace/your_files/angle-detector-ui/android-*.png`.
+- Environment limitation (reported, not worked around): the sandboxed Chromium build
+  enforces Local Network Access checks (organization-managed) that block localhost
+  navigation, and has no direct egress. Testing used a fully offline page instead:
+  production JS bundle (verified self-contained, 0 external refs) + Tailwind v4 CSS
+  compiled locally with the real Tailwind engine from the repo's actual class list +
+  fixture via the file-input path. No mockups — all screenshots are the actual rendered
+  app. Real-device camera testing was not possible here.
+
+### Result
+COMPLETE — validation only. Nothing pushed, merged, or deployed.
+
+### Findings
+- Snap-to-edge defaults ON and pulled scripted taps 5.5° off truth on the busy Mitutoyo
+  render (129.1° vs 134.646°); with snap OFF the same taps read 134.7°. This is the
+  feature working as designed (nearest strong edge within radius), not a geometry bug —
+  but an operator measuring a detailed part must verify placement with the loupe, or
+  toggle snap off. Worth one line of operator guidance before press-brake use.
+- At 360px the icon toolbar wraps to two rows (one row at ≥390px); still compact and
+  doesn't cover the measurement area.
+- No JDK, Android SDK, Gradle, emulator, adb, or Capacitor in this environment or the
+  project. APK packaging is feasible in principle (standard Vite SPA — Capacitor can
+  wrap it), but requires installing the Android toolchain (large downloads, needs
+  owner approval) plus `npm i @capacitor/core @capacitor/cli`, `npx cap init`,
+  `npx cap add android`. Not started.
+
+### Gate/Blocker
+- Independent review of PR #1 (still pending; no review comments visible).
+- Owner decisions needed: (a) approve merge of PR #1 after review; (b) approve Android
+  toolchain install for a test APK; (c) green-light the simulation workspace phase only
+  after AD-03 is reviewed and stable.
+
+### Do Not Redo
+The offline emulation harness (`/tmp/ad_test.html` build script, CDP touch scripts);
+the 6-viewport touch test matrix and its results.
+
+### Next Action
+Await independent review of PR #1 and owner decisions above. Do not start new phases,
+push, merge, or deploy without explicit owner approval.
+
+## Session 007 — AD-03 Safety Refinement: snap defaults OFF (2026-10-09)
+
+### Goal
+Owner-authorized (explicit, via Lana 1 relay): make snap-to-edge default OFF for new
+measurement sessions, add operator guidance, re-verify. No push/merge/deploy, no SDK
+installs, no simulation workspace.
+
+### Starting State
+Session 006 validation on branch `muse/angle-detector-industrial-ui` (local `bc146f1`).
+
+### Changed
+- `src/render/ManualProtractor.tsx` only:
+  - `useState(true)` → `useState(false)` for snap, with a comment recording why
+    (observed ~5.5° pull on the Mitutoyo render; operator enables explicitly).
+  - Readout details lines (desktop + mobile one-liner) append `· snap on/off`.
+  - Guidance line under the reading: "Verify both edge points before trusting the
+    angle. Snap may select nearby features."
+- `MUSE_ANGLE_DETECTOR_HANDOFF.md` — §11 (refinement record) + §12 (PR #1 reviewer
+  handoff: scope, what (not) to review, test evidence, known limitations, merge gates).
+
+### Verification
+- `npm test` 50/50 pass, `npm run lint` clean, `npm run build` clean.
+- 7/7 CDP touch checks at 390×844: snap defaults OFF (magnet gray), taps → 134.7°
+  vs truth 134.646°, readout shows "snap off", guidance visible, toggle → "snap on"
+  (magnet cyan), reset clears points and restores the prompt.
+- Full 6-viewport matrix re-run: all 6 within 0.05° of truth; drag/lock/export pass;
+  no overflow; 44px targets. Zero failures.
+- Screenshots: `~/workspace/your_files/angle-detector-ui/android-*.png` (+ new
+  snap-off/snap-on/reset shots in /tmp/ad_shots).
+
+### Result
+COMPLETE. Committed locally; NOT pushed, merged, or deployed.
+
+### Findings
+- With snap OFF by default, scripted fixture taps are essentially exact (≤0.05° error
+  at all 6 viewports) — the earlier 5.5° portrait delta is fully attributable to snap
+  pulling onto a nearby edge, confirming the engine was never the problem.
+- No defects found in this session; no app code needed changes beyond the snap default.
+
+### Gate/Blocker
+Independent review of PR #1 (still no public review comments). Owner merge approval.
+
+### Do Not Redo
+The offline harness rebuild (bundle hash changed); the snap test scripts.
+
+### Next Action
+Await independent review + owner decisions (merge; Android toolchain install; then the
+simulation workspace phase). Do not push, merge, deploy, or install without explicit
+owner approval.
+
+## Session 008 — AD-03 Review Prep + Android Readiness (2026-10-09)
+
+### Goal
+Owner-authorized (via Lana 1 relay): preserve/prepare AD-03 for independent review;
+research the smallest practical APK route (Capacitor); write the Moto G Power
+acceptance plan. No push/merge/deploy, no toolchain installs, no simulation workspace.
+
+### Starting State
+Branch `muse/angle-detector-industrial-ui` at local `d582223` (Session 007 snap
+refinement). PR #1 draft, open, unmerged.
+
+### Changed (docs only; no app code)
+- `docs/ANDROID_APK_PLAN.md` (new) — Capacitor 7 route: JDK 17, AGP 8.7.2, Gradle
+  8.11.1, SDK 35/35/23; required pre-packaging code changes (offline bundling —
+  drop Tailwind CDN + import map; CAMERA permission; safe-area insets CSS; rotation
+  config; export fallback if `<a download>` fails in WebView); build steps; open
+  device questions.
+- `docs/MOTO_G_ACCEPTANCE_PLAN.md` (new) — 7-test real-device procedure: camera
+  permission allow/deny, freeze + 3-point placement, drag correction, lock + export,
+  rotation/safe areas, accuracy table vs trusted reference (3 pieces × 3 repeats,
+  proposed ≤1.0° median / ≤2.0° max — owner to confirm), snap on/off on real parts.
+  No accuracy claim until the table is filled.
+
+### Verification
+- Branch inspection: 5 local commits over main (`1616563`, `06b9e85`, `4cb5151`,
+  `bc146f1`, `d582223`); working tree clean; local HEAD tree intact.
+- PR #1 re-checked live: draft, open, unmerged, `mergeable_state: clean`, head
+  `2a69f8c2`, 4 commits, 3 files (+236/−13).
+- **Scope finding:** PR #1 as it stands covers the readout + portrait follow-up only.
+  The snap-default safety refinement (`d582223`) and both session-log commits exist
+  ONLY locally — they are NOT in the review scope until the branch is pushed, which
+  needs Pedro's separate authorization (explicitly withheld).
+- `npm test` 50/50 pass, `npm run lint` clean, `npm run build` clean — no regressions.
+- Reviewer handoff (§12 of `MUSE_ANGLE_DETECTOR_HANDOFF.md`) verified current, except
+  it says "three commits" — the branch now has five (two are docs-only); corrected
+  below at push time.
+- Review request: NOT sent. The reviewers (Lana/Codex) are reached via Pedro's relay;
+  there is no reviewer user for me to @-mention, and outward requests need his word.
+  The request is staged: everything a reviewer needs is in the handoff §12.
+
+### Result
+COMPLETE — preparation and planning only. Nothing pushed, merged, installed, or deployed.
+
+### Findings
+- Capacitor 7 + JDK 17 is the conservative toolchain (Capacitor 8 would want JDK 21).
+  Minimum practical route is genuinely small: `npm i @capacitor/{core,cli}`, `cap init`,
+  `cap add android`, manifest permission, `assembleDebug` — IF the §2 code changes
+  (offline bundling etc.) are done first.
+- The single biggest pre-APK code task is killing the CDN dependencies (Tailwind Play
+  + aistudiocdn import map); the JS bundle itself is already self-contained.
+- Export-via-`<a download>` is the main WebView unknown — flagged for the device test
+  with a Filesystem-plugin fallback ready.
+
+### Gate/Blocker
+1. Pedro's separate authorization to push the branch (brings the snap fix + reviewer
+   handoff into PR #1's scope).
+2. Independent review of PR #1 (no public comments yet).
+3. Pedro's merge approval; then toolchain-install approval for the APK.
+
+### Do Not Redo
+The toolchain version research; the two new docs.
+
+### Next Action
+Pedro decides: (a) authorize push of `d582223` so review covers the snap fix;
+(b) trigger the independent review (relay to Lana/Codex); (c) approve merge after
+review; (d) approve toolchain install for the APK. Exact next command once (a) is
+approved: `git push origin muse/angle-detector-industrial-ui` (from a machine with
+GitHub write access), then blob-verify.
+
+## Session 012 — AD-03 Codex FAIL corrections (2026-10-09)
+
+### Goal
+Owner-authorized (via Lana 1 relay): correct Codex FAIL defects on
+`muse/angle-detector-industrial-ui`. Local commits only; no push, no merge.
+
+### P1 — Frozen-frame rotation defect (root cause + fix)
+**Root cause:** `ManualProtractor` rendered the frozen `<img>` with
+`w-full h-full` (stretch to fill), while points were stored in
+container-normalized coords and the geometry engine used original image
+dimensions. Rotating after freeze (3:4 ↔ 16:9) distorted the image; a 45° bend
+no longer measured 45°.
+
+**Fix:** New `src/render/containRect.ts` (pure functions): `containRect`
+(object-contain rect), `toImageNorm` (container → image-normalized),
+`toContainerPx` (image-normalized → container). The `<img>` is explicitly
+positioned at the contain rect (letterboxed, never stretched). Points are now
+stored image-normalized; `toNorm`/`px`/hit-testing all go through the rect.
+Geometry engine, loupe, snap, and PNG export unchanged (they already consume
+image-normalized points × original dimensions).
+
+**Verification:**
+- 10 new tests in `tests/containRect.test.ts`: contain math, round-trip,
+  45° fixture across portrait→landscape→portrait, pre/post-rotation placement,
+  old-stretch-would-fail proof. All pass.
+- Browser (headless Chromium, 45° fixture, CDP taps): portrait 45.1°,
+  landscape (rotated) 45.1° — image letterboxed, angle invariant.
+  Screenshots: `~/workspace/your_files/angle-detector-ui/p1-fix/`.
+
+### P2 — Warning contrast
+`text-gray-500` (4.3:1, below 4.5:1) → `text-gray-300` (14.3:1 on black,
+8.6:1 pessimistic). Verified by computation.
+
+### Hardening
+- `aria-pressed` + `aria-label` on snap/lock/convention toggles.
+- Pointer drag tracks `activePointerId`; secondary touches ignored.
+- Convention label now visible on mobile (was `hidden sm:inline`).
+
+### Results
+60/60 tests (50 existing + 10 new), tsc clean, lint clean, build clean.
+Committed locally on `muse/angle-detector-industrial-ui`. NOT pushed, NOT merged.
+Phase 2 Live UI not started.
+
+### Gate
+Ready for Codex re-review. Awaiting owner: trigger re-review → merge approval.
