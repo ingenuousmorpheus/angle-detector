@@ -12,6 +12,21 @@ import { containRect, toContainerPx, toImageNorm, type Rect } from './containRec
 /** Points in placement order: vertex, edge A, edge B. Normalized display-frame coordinates. */
 type Placed = [Vec2 | null, Vec2 | null, Vec2 | null];
 const EMPTY: Placed = [null, null, null];
+
+/**
+ * Synchronous drag-start guard (Codex PASS WITH CONDITIONS).
+ * A second pointerdown that fires before React rerenders sees stale
+ * `dragIndex` (still null), so the guard must also check the synchronously-
+ * updated `activePointerId` ref. Returns true only if this pointer may
+ * take control of the drag.
+ */
+export function canStartPointerDrag(
+  locked: boolean,
+  dragIndex: number | null,
+  activePointerId: number | null,
+): boolean {
+  return !locked && dragIndex === null && activePointerId === null;
+}
 const PROMPTS = ['Tap the vertex (the bend / pivot)', 'Tap a point on the first edge', 'Tap a point on the second edge'];
 const HANDLE_HIT_PX = 32;
 const LOUPE_PX = 132;
@@ -131,10 +146,12 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   }, [points]);
 
   // Active pointer for the drag: secondary touches must not hijack it.
+  // The ref is checked synchronously (not just React state) so a second
+  // pointerdown firing before the rerender cannot steal the drag.
   const activePointerId = useRef<number | null>(null);
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (locked || dragIndex !== null) return;
+    if (!canStartPointerDrag(locked, dragIndex, activePointerId.current)) return;
     const p = toNorm(e);
     const nextEmpty = points.findIndex((q) => q === null);
     let index = nextEmpty;
