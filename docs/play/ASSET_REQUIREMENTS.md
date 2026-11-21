@@ -2,8 +2,8 @@
 
 | Asset | Google Play requirement | Status |
 | --- | --- | --- |
-| App icon | 512 × 512 PNG (32-bit, alpha allowed), ≤ 1 MB | **To export** from `docs/images/logo.svg` (same mark as the launcher icon) |
-| Feature graphic | 1024 × 500 PNG/JPEG, no alpha | **To make** |
+| App icon | 512 × 512 PNG (32-bit, alpha allowed), ≤ 1 MB | **Done:** `docs/play/assets/icon-512.png` (logo in a gold ring; source `scripts/store-art/icon.html`) |
+| Feature graphic | 1024 × 500 PNG/JPEG, no alpha | **Done:** `docs/play/assets/feature-graphic-1024x500.png` (title, tagline, rendered rc5 protractor; source `scripts/store-art/feature.html`) |
 | Phone screenshots | 2–8 images, PNG/JPEG, each side 320–3840 px, aspect up to 2:1 (16:9 or 9:16 typical) | **Retake on rc5.** The old shots (`docs/images/ar-lock-*.jpg`) show the old heading and the Mitutoyo overlay; don't use them. The owner's rc4 deck-railing shot (AR Lock, 60.4°) is the right style |
 | 7" / 10" tablet screenshots | Optional for phones-only app | Skip for closed test |
 | Launcher icon (adaptive) | Foreground + background + monochrome | Done: `android/app/src/main/res/mipmap-anydpi-v26`, `drawable/ic_angle_lens_foreground.xml` |

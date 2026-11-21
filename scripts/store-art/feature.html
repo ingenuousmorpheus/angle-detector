@@ -1,0 +1,53 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/node_modules/@fontsource/orbitron/900.css">
+<link rel="stylesheet" href="/node_modules/@fontsource/rajdhani/600.css">
+<link rel="stylesheet" href="/node_modules/@fontsource/rajdhani/700.css">
+<style>
+  html,body{margin:0;background:#05080d}
+  .fg{position:relative;width:1024px;height:500px;overflow:hidden;
+    background:
+      radial-gradient(ellipse 55% 70% at 78% 50%, rgba(251,191,36,.16), transparent 70%),
+      radial-gradient(ellipse 60% 60% at 10% 0%, rgba(34,211,238,.14), transparent 70%),
+      linear-gradient(180deg,#0a0f16 0%,#070b10 55%,#080b10 100%);
+    font-family:Rajdhani,system-ui,sans-serif;color:#fff}
+  .hex{position:absolute;inset:0;opacity:.08;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='48' viewBox='0 0 28 48'%3E%3Cpath d='M14 0l14 8v16l-14 8L0 24V8z M14 32l14 8v16 M14 32L0 40v16' fill='none' stroke='%2394a3b8' stroke-width='1'/%3E%3C/svg%3E")}
+  .frame{position:absolute;inset:14px;border:2px solid rgba(227,169,43,.75);border-radius:14px;
+    box-shadow:0 0 18px rgba(251,191,36,.35), inset 0 0 22px rgba(251,191,36,.15)}
+  .tool{position:absolute;right:-2px;top:-12px;width:540px;height:524px;
+    background:url(protractor_pad.png) center/contain no-repeat;
+    -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 74%,transparent 98%);
+    mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 74%,transparent 98%)}
+  .copy{position:absolute;left:60px;top:92px;width:470px}
+  .logo{display:flex;align-items:center;gap:18px}
+  h1{margin:0;font-family:Orbitron;font-weight:900;font-size:62px;letter-spacing:.04em;line-height:1;
+    background:linear-gradient(180deg,#fff3c4 0%,#fbd46b 35%,#d99a1e 62%,#f6c75a 80%,#8a5a0b 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 8px rgba(251,191,36,.45))}
+  .sub{margin-top:10px;display:flex;align-items:center;gap:12px;font-weight:700;font-size:19px;letter-spacing:.24em;color:#e2e8f0}
+  .sub i{display:block;height:1px;width:34px;background:rgba(148,163,184,.7)}
+  .tag{margin-top:40px;padding:14px 22px;font-weight:700;font-size:27px;line-height:1.2;text-transform:uppercase;letter-spacing:.03em;
+    clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0 calc(100% - 14px),0 14px);
+    background:linear-gradient(180deg,rgba(14,40,58,.9),rgba(6,16,26,.95));
+    box-shadow:inset 0 0 0 1px rgba(56,214,255,.6),inset 0 0 18px rgba(56,214,255,.2)}
+  .tag b{color:#fcd34d}
+  .pts{margin-top:22px;display:flex;gap:22px;font-weight:600;font-size:19px;color:#a5f3fc;letter-spacing:.06em;text-transform:uppercase}
+  .pts span::before{content:'';display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:#22d3ee;box-shadow:0 0 8px #22d3ee;vertical-align:2px}
+</style></head>
+<body>
+<div class="fg" id="fg">
+  <div class="hex"></div>
+  <div class="tool"></div>
+  <div class="copy">
+    <div class="logo">
+      <svg viewBox="28 30 56 48" width="76" height="66"><defs><filter id="g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <g fill="none" stroke-linecap="round" filter="url(#g)"><path d="M56,72 A22,22 0 0,0 48.14,55.15" stroke="#FBBF24" stroke-width="5"/><path d="M78,72 L34,72 L62.3,38.3" stroke="#22D3EE" stroke-width="6" stroke-linejoin="round"/></g><circle cx="34" cy="72" r="5" fill="#fff"/></svg>
+      <h1>ANGLE<br>LENS</h1>
+    </div>
+    <div class="sub"><i></i>PROFESSIONAL ANGLE FINDER<i></i></div>
+    <div class="tag">Point. Lock. <b>Read the angle.</b></div>
+    <div class="pts"><span>AR Lock</span><span>Offline</span><span>No ads</span></div>
+  </div>
+  <div class="frame"></div>
+</div>
+</body></html>

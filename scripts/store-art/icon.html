@@ -1,0 +1,18 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;overflow:hidden;background:#000}
+  .ic{width:512px;height:512px;position:relative;
+    background:radial-gradient(circle at 50% 38%,#16263a 0%,#0b1420 55%,#060a10 100%)}
+  .ring{position:absolute;inset:26px;border-radius:50%;
+    border:10px solid transparent;
+    background:conic-gradient(from 200deg,#8a5a0b,#ffe08a,#d99a1e,#fff3c4,#b47712,#ffe08a,#8a5a0b) border-box;
+    -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+    filter:drop-shadow(0 0 10px rgba(251,191,36,.55));opacity:.9}
+  svg{position:absolute;left:82px;top:89px;width:360px;height:308.6px}
+</style></head>
+<body><div class="ic">
+  <div class="ring"></div>
+  <svg viewBox="28 30 56 48"><defs><filter id="g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <g fill="none" stroke-linecap="round" filter="url(#g)"><path d="M56,72 A22,22 0 0,0 48.14,55.15" stroke="#FBBF24" stroke-width="5"/><path d="M78,72 L34,72 L62.3,38.3" stroke="#22D3EE" stroke-width="6" stroke-linejoin="round"/></g><circle cx="34" cy="72" r="5" fill="#fff"/></svg>
+</div></body></html>
