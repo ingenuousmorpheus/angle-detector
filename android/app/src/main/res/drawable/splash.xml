@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Angle Lens launch screen (Android 6-11): dark background with the app mark.
+     Android 12+ uses the windowSplashScreen* attributes in styles.xml instead. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <item
+        android:width="192dp"
+        android:height="192dp"
+        android:gravity="center"
+        android:drawable="@drawable/ic_angle_lens_foreground" />
+</layer-list>

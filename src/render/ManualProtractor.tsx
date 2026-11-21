@@ -6,6 +6,7 @@ import type { AngleMeasurement } from '../measurement/measurementTypes';
 import { snapToEdge } from '../vision/snapToEdge';
 import type { GrayImage } from '../vision/grayImage';
 import { exportAnnotated } from './exportAnnotated';
+import { savePngDataUrl } from '../platform/saveImage';
 import { conventionLabel, formatAngle, NEXT_CONVENTION } from './format';
 import { containRect, toContainerPx, toImageNorm, type Rect } from './containRect';
 
@@ -209,10 +210,11 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   const save = () => {
     if (!measurement?.found || !complete) return;
     const url = exportAnnotated(frame, [edgeA, vertex, edgeB], measurement);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `angle-${(measurement.displayDeg ?? 0).toFixed(1)}deg-${Date.now()}.png`;
-    a.click();
+    const name = `angle-${(measurement.displayDeg ?? 0).toFixed(1)}deg-${Date.now()}.png`;
+    savePngDataUrl(url, name).catch((e) => {
+      // Dismissing the share sheet is not an error worth showing.
+      if (!/cancel/i.test(String(e?.message ?? e))) console.error('Save failed', e);
+    });
   };
 
   // ---- drawing (container CSS pixels, via the contain rect) ----

@@ -7,7 +7,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 font-sans">
       <header className="w-full max-w-4xl text-center mb-6">
         <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-500">
-          Live Angle Detector
+          Angle Lens
         </h1>
         <p className="text-gray-400 mt-2 text-lg">
           Freeze the frame, tap the vertex and both edges, and read the angle.
@@ -17,7 +17,7 @@ const App: React.FC = () => {
         <CameraAngleDetector />
       </main>
       <footer className="w-full max-w-4xl text-center mt-6 text-gray-500 text-sm">
-        <p>Angles are computed geometrically from the points you place (2D apparent angle — keep the camera square to the bend). AI analysis is optional.</p>
+        <p>Angles are computed geometrically from the points you place (2D apparent angle — keep the camera square to the bend). No accuracy is claimed without calibration.</p>
       </footer>
     </div>
   );

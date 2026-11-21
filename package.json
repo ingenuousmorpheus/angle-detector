@@ -1,7 +1,7 @@
 {
-  "name": "live-angle-detector",
+  "name": "angle-lens",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,11 +10,15 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "baseline:gemini": "vite-node scripts/baseline-gemini.ts",
-    "fixtures:export": "vite-node scripts/export-fixtures.ts"
+    "fixtures:export": "vite-node scripts/export-fixtures.ts",
+    "build:release": "vite build && node scripts/check-release-bundle.mjs dist",
+    "android:sync": "npm run build:release && npx cap sync android"
   },
   "dependencies": {
     "@capacitor/android": "^7.6.10",
     "@capacitor/core": "^7.6.10",
+    "@capacitor/filesystem": "^7.1.9",
+    "@capacitor/share": "^7.0.4",
     "@google/genai": "^1.17.0",
     "lucide-react": "^0.542.0",
     "react": "^19.1.1",

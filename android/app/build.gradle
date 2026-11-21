@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+// Release signing. Secrets are never committed: they come from
+// android/keystore.properties (git-ignored) or ANGLE_LENS_* environment variables.
+// Without them, release builds are produced unsigned. See docs/ANDROID_RELEASE.md.
+def signingProps = new Properties()
+def signingFile = rootProject.file('keystore.properties')
+if (signingFile.exists()) { signingFile.withInputStream { signingProps.load(it) } }
+def signingValue = { String key, String env -> signingProps.getProperty(key) ?: System.getenv(env) }
+def releaseStoreFile = signingValue('storeFile', 'ANGLE_LENS_KEYSTORE')
+def hasReleaseSigning = releaseStoreFile && file(releaseStoreFile).exists()
+
 android {
     namespace "com.ingenuous.angledetector"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +17,9 @@ android {
         applicationId "com.ingenuous.angledetector"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // Bump versionCode for every upload to Google Play.
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0-rc1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +27,20 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword signingValue('storePassword', 'ANGLE_LENS_KEYSTORE_PASSWORD')
+                keyAlias signingValue('keyAlias', 'ANGLE_LENS_KEY_ALIAS')
+                keyPassword signingValue('keyPassword', 'ANGLE_LENS_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) signingConfig signingConfigs.release
+            debuggable false
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

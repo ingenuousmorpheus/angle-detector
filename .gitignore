@@ -25,3 +25,8 @@ dist-ssr
 
 # fixture build intermediates
 fixtures/**/silhouette.png
+
+# Android release signing (never commit)
+*.jks
+*.keystore
+keystore.properties

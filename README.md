@@ -26,9 +26,9 @@ Point the camera at a bend, freeze the frame, and place three points: the vertex
 - **Manual protractor.** Freeze any frame, or open a photo from the gallery, and tap the vertex and both edges yourself. Drag handles to fine-tune, with undo and reset.
 - **Angle conventions.** Switch between interior, supplement and exterior.
 - **Snap to edge (optional, off by default).** Moves an edge point onto the nearest strong edge in the image. Check where it landed before trusting the reading.
-- **Lock and save.** Lock the result so it can't be bumped, and save an annotated PNG of the frame.
-- **Works offline.** Everything except the optional AI assist runs on the device; no account or network needed.
-- **Optional AI assist.** With a Gemini API key set, an **Analyze** button asks Gemini to find the angle in the frame. Its points can be used as a starting placement; the reading is then computed from those points by the same geometry, after you check them.
+- **Lock and save.** Lock the result so it can't be bumped, and save an annotated PNG of the frame (on Android, through the share sheet).
+- **Works offline.** No account, no network requests, no analytics.
+- **AI assist (development only).** In `npm run dev` with a Gemini API key set, an **AI Analyze** button asks Gemini to find the angle in the frame; its points can be used as a starting placement for the same geometry. It is compiled out of release builds, including the Android app, so no API key ships to users.
 
 ## Measurement limits
 
@@ -38,14 +38,15 @@ Point the camera at a bend, freeze the frame, and place three points: the vertex
 
 ## Android app
 
-Angle Lens is packaged for Android with Capacitor 7 (`com.ingenuous.angledetector`). It has been built and run on a Moto G Power.
+Angle Lens is packaged for Android with Capacitor 7 (`com.ingenuous.angledetector`, target SDK 36). Release builds and signing: [docs/ANDROID_RELEASE.md](docs/ANDROID_RELEASE.md). Release status: [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md).
 
-Toolchain: Node 20+, **JDK 21**, Android SDK (`platform-tools`, `platforms;android-35`, `build-tools;35.0.0`).
+Toolchain: Node 20+, **JDK 21**, Android SDK (`platform-tools`, `platforms;android-36`, `build-tools;36.0.0`).
+
+Debug build:
 
 ```bash
 npm install
-npm run build
-npx cap sync android
+npm run android:sync   # release-safe web build + bundle check + cap sync
 cd android && ./gradlew assembleDebug   # -> android/app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -65,7 +66,7 @@ npm run dev        # http://localhost:3000
 
 To enable the optional AI assist, put `GEMINI_API_KEY=<your key>` in `.env.local`.
 
-Test AR Lock without a camera: `http://localhost:3000/?photo=/fixtures/mitutoyo-digital-protractor/mitutoyo_center.jpg&ar=1`
+Test AR Lock without a camera (dev server only; this hook is compiled out of release builds): `http://localhost:3000/?photo=/fixtures/mitutoyo-digital-protractor/mitutoyo_center.jpg&ar=1`
 
 ## Development
 

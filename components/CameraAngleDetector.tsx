@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { analyzeImageAngle, isAiAvailable } from '../services/geminiService';
 import type { AngleAnalysisResult } from '../types';
 import AngleDisplay from './AngleDisplay';
 import ManualProtractor from '../src/render/ManualProtractor';
@@ -53,9 +52,17 @@ const CameraAngleDetector: React.FC = () => {
         return () => ro.disconnect();
     }, []);
 
+    const stopCamera = useCallback(() => {
+        const video = videoRef.current;
+        const stream = video?.srcObject as MediaStream | null;
+        stream?.getTracks().forEach((track) => track.stop());
+        if (video) video.srcObject = null;
+    }, []);
+
     const startCamera = useCallback(async () => {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             try {
+                stopCamera(); // never hold two streams
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: 'environment',
@@ -76,7 +83,29 @@ const CameraAngleDetector: React.FC = () => {
         } else {
             setError("Your browser does not support camera access. Use Open Photo instead.");
         }
-    }, []);
+    }, [stopCamera]);
+
+    // Release the camera while the app is in the background (Android pause, tab hidden)
+    // and reopen it on return if it was running. A frozen frame is kept as it is.
+    const resumeCameraRef = useRef(false);
+    useEffect(() => {
+        const onVisibility = () => {
+            const video = videoRef.current;
+            if (document.hidden) {
+                resumeCameraRef.current = Boolean(video?.srcObject);
+                if (resumeCameraRef.current) {
+                    stopCamera();
+                    setIsCameraOn(false);
+                }
+            } else if (resumeCameraRef.current) {
+                resumeCameraRef.current = false;
+                setIsCameraOn(true);
+                startCamera();
+            }
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => document.removeEventListener('visibilitychange', onVisibility);
+    }, [startCamera, stopCamera]);
 
     useEffect(() => {
         // Clear timeout on unmount
@@ -112,6 +141,7 @@ const CameraAngleDetector: React.FC = () => {
         const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
         const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
         setAnalysisResult(null);
+        setError(null); // e.g. a camera-denied message no longer applies once a frame is open
         setFrozen({ canvas, gray: rgbaToGray(data, canvas.width, canvas.height), initial, ar });
     }, []);
 
@@ -151,8 +181,10 @@ const CameraAngleDetector: React.FC = () => {
         img.src = URL.createObjectURL(file);
     }, [captureCover, freezeFrom]);
 
-    // `?photo=<url>` opens an image straight into manual mode (fixtures, field photos, testing).
+    // Developer hook: `?photo=<url>&ar=1` opens an image straight into manual/AR mode.
+    // Compiled out of release builds (__DEV_TOOLS__ is false outside `npm run dev`).
     useEffect(() => {
+        if (!__DEV_TOOLS__) return;
         const params = new URLSearchParams(window.location.search);
         const url = params.get('photo');
         const ar = params.get('ar') === '1';
@@ -168,6 +200,7 @@ const CameraAngleDetector: React.FC = () => {
     }, [captureCover, freezeFrom]);
 
     const handleAnalyze = useCallback(async () => {
+        if (!__AI_ASSIST__) return; // release builds: no Gemini client, no network call
         if (!videoRef.current || !canvasRef.current) return;
 
         if (resultTimeoutRef.current) {
@@ -189,6 +222,7 @@ const CameraAngleDetector: React.FC = () => {
         const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
         try {
+            const { analyzeImageAngle } = await import('../services/geminiService');
             const result = await analyzeImageAngle(imageDataUrl);
             setAnalysisResult(result);
             resultTimeoutRef.current = setTimeout(() => {
@@ -217,7 +251,8 @@ const CameraAngleDetector: React.FC = () => {
                 and the angle is computed from normalized points in pixel space,
                 so the math is aspect-independent. */}
             <div ref={containerRef} className="relative w-full aspect-video portrait:aspect-[3/4] bg-gray-800 rounded-lg shadow-2xl overflow-hidden border-2 border-gray-700">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover"></video>
+                {/* Transparent poster: Android WebView otherwise paints a large grey "play" placeholder before the camera starts. */}
+                <video ref={videoRef} autoPlay playsInline muted poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" className="w-full h-full object-cover"></video>
 
                 {!isCameraOn && !frozen && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-60 z-10">
@@ -334,7 +369,7 @@ const CameraAngleDetector: React.FC = () => {
                         <ImageUp className="w-6 h-6" />
                         <span>Open Photo</span>
                     </button>
-                    {isAiAvailable() && (
+                    {__AI_ASSIST__ && (
                         <button
                             onClick={handleAnalyze}
                             disabled={!isCameraOn || isLoading}
