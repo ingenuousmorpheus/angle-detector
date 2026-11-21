@@ -90,6 +90,7 @@ const ProtractorOverlay: React.FC<ProtractorOverlayProps> = ({ width, height, ve
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.setClearColor(0x000000, 0);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
     const scene = new THREE.Scene();
     // Image-based lighting so the gold reads as polished metal.
     const pmrem = new THREE.PMREMGenerator(renderer);
@@ -143,7 +144,7 @@ const ProtractorOverlay: React.FC<ProtractorOverlayProps> = ({ width, height, ve
           roughnessMap: old.roughnessMap,
           metalness: 1,
           roughness: 0.6,
-          envMapIntensity: 1.8,
+          envMapIntensity: 2.2,
           transparent: true,
         });
         materials.push(m);
@@ -209,9 +210,10 @@ const ProtractorOverlay: React.FC<ProtractorOverlayProps> = ({ width, height, ve
       bladePivot.rotation.z = THREE.MathUtils.degToRad(cur.blade);
       root.visible = true;
 
-      // Ghosted while searching / aligning, solid once locked.
+      // Gently pulsing while searching, solid once locked.
       const pulse = 0.5 + 0.5 * Math.sin(t / 450);
-      const opacity = !measuring ? 0.18 + 0.12 * pulse : p.locked ? 0.96 : 0.72;
+      // Nearly solid at all times: a faint ghost disappears against a real camera image.
+      const opacity = !measuring ? 0.86 + 0.1 * pulse : p.locked ? 1 : 0.94;
       for (const m of materials) m.opacity = opacity;
       renderer.render(scene, camera);
     };
