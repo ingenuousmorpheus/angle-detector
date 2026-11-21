@@ -13,7 +13,8 @@ import rigJson from './mitutoyoRig.json';
  */
 const rig = rigJson as ProtractorRig & {
   armLength: number;
-  lcd: { x0: number; x1: number; y0: number; y1: number; z: number };
+  /** LCD window: centre, size and tilt in model units, front view. */
+  lcd: { cx: number; cy: number; w: number; h: number; angleDeg: number; z: number };
 };
 // Served from public/ (web dev server and the Android WebView both serve the app root).
 const MODEL_URL = 'models/mitutoyo-protractor.glb';
@@ -35,7 +36,7 @@ export interface MitutoyoOverlayProps {
   aim?: Vec2;
 }
 
-const LCD_W = 512, LCD_H = 256;
+const LCD_W = 512, LCD_H = 212; // same aspect as rig.lcd (w:h ~ 2.4)
 
 function drawLcd(ctx: CanvasRenderingContext2D, deg: number | null, locked: boolean) {
   ctx.fillStyle = '#aab69a';
@@ -105,10 +106,10 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
     drawLcd(lcdCtx, lcdStateRef.current.displayDeg, lcdStateRef.current.locked);
     const lcdMat = new THREE.MeshBasicMaterial({ map: lcdTex, transparent: true });
     materials.push(lcdMat);
-    const inset = 0.012;
-    const lcdW = rig.lcd.x1 - rig.lcd.x0 - 2 * inset, lcdH = rig.lcd.y1 - rig.lcd.y0 - 2 * inset;
-    const lcdMesh = new THREE.Mesh(new THREE.PlaneGeometry(lcdW, lcdH), lcdMat);
-    lcdMesh.position.set((rig.lcd.x0 + rig.lcd.x1) / 2 - rig.pivot.x, (rig.lcd.y0 + rig.lcd.y1) / 2 - rig.pivot.y, rig.lcd.z + 0.004);
+    const lcdTilt = THREE.MathUtils.degToRad(rig.lcd.angleDeg);
+    const lcdMesh = new THREE.Mesh(new THREE.PlaneGeometry(rig.lcd.w, rig.lcd.h), lcdMat);
+    lcdMesh.position.set(rig.lcd.cx - rig.pivot.x, rig.lcd.cy - rig.pivot.y, rig.lcd.z);
+    lcdMesh.rotation.z = lcdTilt;
     lcdMesh.renderOrder = 2;
     root.add(lcdMesh);
 
@@ -179,18 +180,16 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
       root.scale.set(mirrored ? -cur.scale : cur.scale, cur.scale, cur.scale);
       // LCD text stays readable: un-mirror it, and turn it over when the dial is upside down.
       lcdMesh.scale.x = mirrored ? -1 : 1;
-      lcdMesh.rotation.z = Math.abs(cur.body) > 95 ? Math.PI : 0;
+      const textDeg = (((mirrored ? cur.body - rig.lcd.angleDeg : cur.body + rig.lcd.angleDeg) % 360) + 540) % 360 - 180;
+      lcdMesh.rotation.z = lcdTilt + (Math.abs(textDeg) > 95 ? Math.PI : 0);
       bladePivot.rotation.z = THREE.MathUtils.degToRad(cur.blade);
       root.visible = true;
 
-      // Hologram while searching / aligning, solid once locked.
+      // Ghosted while searching / aligning, solid once locked. No colour tint:
+      // the gold finish is in the texture.
       const pulse = 0.5 + 0.5 * Math.sin(t / 450);
       const opacity = !measuring ? 0.18 + 0.12 * pulse : p.locked ? 0.96 : 0.72;
-      const tint = !measuring || !p.locked ? 0x9ff3ff : 0xffffff;
-      for (const m of materials) {
-        m.opacity = opacity;
-        if (m !== lcdMat) m.color.setHex(tint);
-      }
+      for (const m of materials) m.opacity = opacity;
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(tick);
