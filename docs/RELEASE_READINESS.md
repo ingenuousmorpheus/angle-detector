@@ -17,6 +17,9 @@ subscription ends. **Owner to confirm** which plan the account was on when `Gold
 generated (2026-11-21), keep the receipt, and ideally get Hi3D support to confirm in writing that a model
 generated on a paid plan may be shipped in a paid app permanently. Until then the model is a Play blocker.
 
+**Owner confirmed (2026-11-21): the account is on the paid Pro plan** ("Commercial use"). Remaining: keep the receipt
+showing Pro was active on the generation date; optional written confirmation from Hi3D about use after cancelling.
+
 ---
 
 ## RC3 update (2026-11-21): own protractor model and HUD redesign
