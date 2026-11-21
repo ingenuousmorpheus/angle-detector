@@ -87,18 +87,23 @@ const ProtractorOverlay: React.FC<ProtractorOverlayProps> = ({ width, height, ve
   useEffect(() => {
     const canvas = canvasRef.current!;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    // Full phone pixel density keeps the tool's edges crisp.
+    renderer.setPixelRatio(Math.min(3, window.devicePixelRatio || 1));
     renderer.setClearColor(0x000000, 0);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 1.0;
     const scene = new THREE.Scene();
     // Image-based lighting so the gold reads as polished metal.
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environment = envTex;
-    const key = new THREE.DirectionalLight(0xfff1d6, 1.6);
+    const key = new THREE.DirectionalLight(0xfff1d6, 2.2);
     key.position.set(-1, 1.5, 2);
     scene.add(key);
+    // Cool rim light from below-right so the edges catch light and separate from the photo.
+    const rim = new THREE.DirectionalLight(0xcfe8ff, 0.9);
+    rim.position.set(1.5, -1, 1);
+    scene.add(rim);
     const camera = new THREE.OrthographicCamera(0, 1, 0, -1, -5000, 5000);
 
     const root = new THREE.Group(); // at the vertex, rotated + scaled
@@ -143,8 +148,8 @@ const ProtractorOverlay: React.FC<ProtractorOverlayProps> = ({ width, height, ve
           metalnessMap: old.metalnessMap,
           roughnessMap: old.roughnessMap,
           metalness: 1,
-          roughness: 0.6,
-          envMapIntensity: 2.2,
+          roughness: 0.45,
+          envMapIntensity: 1.5,
           transparent: true,
         });
         materials.push(m);
@@ -212,9 +217,14 @@ const ProtractorOverlay: React.FC<ProtractorOverlayProps> = ({ width, height, ve
 
       // Gently pulsing while searching, solid once locked.
       const pulse = 0.5 + 0.5 * Math.sin(t / 450);
-      // Nearly solid at all times: a faint ghost disappears against a real camera image.
-      const opacity = !measuring ? 0.86 + 0.1 * pulse : p.locked ? 1 : 0.94;
-      for (const m of materials) m.opacity = opacity;
+      // Solid metal while measuring (no blending, so the photo never shows through);
+      // a near-solid gentle pulse only while searching.
+      const opacity = measuring ? 1 : 0.86 + 0.1 * pulse;
+      const blend = opacity < 1;
+      for (const m of materials) {
+        if (m.transparent !== blend && m !== lcdMat) { m.transparent = blend; m.needsUpdate = true; }
+        m.opacity = opacity;
+      }
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(tick);
@@ -231,7 +241,9 @@ const ProtractorOverlay: React.FC<ProtractorOverlayProps> = ({ width, height, ve
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ width, height }} />;
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none"
+    // Thin dark outline + soft contact shadow: sharp silhouette against any background.
+    style={{ width, height, filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.95)) drop-shadow(0 3px 6px rgba(0,0,0,0.55))' }} />;
 };
 
 export default ProtractorOverlay;
