@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { approachAngle, protractorPose, type ProtractorRig } from '../src/ar/protractorPose';
-import rigJson from '../src/ar/mitutoyoRig.json';
+import rigJson from '../src/ar/angleFinderRig.json';
 
 const rig: ProtractorRig = { pivot: { x: 0, y: 0 }, armDirDeg: 150, bladeDirDeg: 15 };
 const v = { x: 100, y: 100 };

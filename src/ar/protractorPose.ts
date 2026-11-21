@@ -1,7 +1,7 @@
 import type { Vec2 } from '../geometry/angle2d';
 
 /**
- * Where to draw the 3D Mitutoyo protractor so it sits on a measured angle.
+ * Where to draw the 3D Angle Lens protractor so it sits on a measured angle.
  * Presentation only: it never produces the reading, it only poses the model on
  * points the measurement already uses.
  */

@@ -4,7 +4,7 @@
 
 # Angle Lens
 
-**Measure bend angles from your phone camera, with a 3D Mitutoyo digital protractor laid over the part.**
+**Measure bend angles from your phone camera, with a 3D golden Angle Lens protractor laid over the part.**
 
 React · TypeScript · Vite · three.js · Capacitor (Android)
 
@@ -18,7 +18,7 @@ React · TypeScript · Vite · three.js · Capacitor (Android)
 
 ## What it does
 
-Point the camera at a bend, freeze the frame, and place three points: the vertex and one point on each edge. Angle Lens draws the angle, shows the reading in large type, and lays a 3D Mitutoyo digital protractor along the two edges with the same value on its LCD.
+Point the camera at a bend, freeze the frame, and place three points: the vertex and one point on each edge. Angle Lens draws the angle, shows the reading in large type, and lays the 3D Angle Lens protractor along the two edges with the same value on its display.
 
 ## Features
 
@@ -82,7 +82,7 @@ npm run build      # production build into dist/
 | `src/measurement/`, `src/geometry/` | Angle maths from placed points |
 | `src/vision/` | Optional snap-to-edge |
 | `src/render/` | Manual protractor, annotated PNG export |
-| `src/ar/` | 3D Mitutoyo overlay and its pose maths |
-| `scripts/prepare-mitutoyo-model.mjs` | Builds `public/models/mitutoyo-protractor.glb` from the Hi3D scan (simplifies it, splits the blade from the body, fits the pivot into `src/ar/mitutoyoRig.json`) |
+| `src/ar/` | 3D protractor overlay (`ProtractorOverlay.tsx`) and its pose maths |
+| `scripts/prepare-angle-finder-model.mjs` | Builds `public/models/angle-finder.glb` from the Hi3D "Golden Angle Finder Pro" model (splits the blade from the body, fits the pivot into `src/ar/angleFinderRig.json`, simplifies each part) |
 | `android/` | Capacitor Android project |
 | `docs/` | Android plan, acceptance plan, baseline notes |

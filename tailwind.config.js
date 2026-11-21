@@ -3,6 +3,13 @@
 // so the app works offline inside the Android APK.
 export default {
   content: ['./index.html', './App.tsx', './index.tsx', './components/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
-  theme: { extend: {} },
+  theme: {
+    extend: {
+      fontFamily: {
+        display: ['Orbitron', 'Rajdhani', 'system-ui', 'sans-serif'],
+        hud: ['Rajdhani', 'system-ui', 'sans-serif'],
+      },
+    },
+  },
   plugins: [],
 };

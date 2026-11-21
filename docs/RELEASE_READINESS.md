@@ -8,6 +8,36 @@ Labels used: **VERIFIED** (observed in this session, with the evidence named), *
 
 ---
 
+## RC3 update (2026-11-21): own protractor model and HUD redesign
+
+Replaces the Mitutoyo-likeness model with the owner's own "Golden Angle Finder Pro"
+design (generated with Hi3D from the owner's concept) and restyles the app to the
+owner's gold-and-cyan HUD mockup. Version 1.0.0-rc3 (versionCode 3).
+
+| Change | Where |
+|---|---|
+| New 3D model: dial + ruler arm (body) and swinging blade, 155k + 3.8k triangles, 4096 px base colour + 2048 px metal/roughness, 7.0 MB | `public/models/angle-finder.glb`, built by `scripts/prepare-angle-finder-model.mjs` |
+| New rig: pivot (-0.003, 0.094), arm 151.9 deg, blade 17.8 deg, display window in the lower dial | `src/ar/angleFinderRig.json` |
+| Lit PBR gold (image-based lighting) instead of the unlit scan; display shows the live reading in glowing digits | `src/ar/ProtractorOverlay.tsx` (renamed from `MitutoyoOverlay.tsx`) |
+| Mitutoyo model, rig and texture-edit scripts removed from the app and the repo tree (kept in git history) | — |
+| HUD theme: Orbitron/Rajdhani fonts (OFL, bundled offline via `@fontsource`), gold-text title, "Professional Angle Finder" subtitle, chamfered cyan banners, gold-framed camera view with corner brackets, tick-ring reticle, Freeze & Measure / round AR Lock / Open Photo controls, restyled measuring toolbar and readout | `App.tsx`, `index.css`, `components/CameraAngleDetector.tsx`, `components/AngleLensLogo.tsx`, `src/render/ManualProtractor.tsx` |
+
+**VERIFIED** (this session): `tsc` clean; 76/76 tests; release bundle check passed; release APK and AAB build;
+test-signed APK verifies (versionCode 3, target SDK 36, 8.7 MB); in the browser (430x932 phone viewport) the
+AR Lock flow shows the new model on the measured edges with 120.0 in its display, locked and unlocked; no console errors.
+Screenshots: `docs/design/rc3/`.
+
+**UNTESTED**: not run on a phone or emulator; the live-camera reticle and ghost were only checked without a camera.
+
+**Not done from the mockup**: the menu and settings buttons in the header (the app has no menu or settings yet)
+and the decorative "AR" badge and bottom gauge.
+
+**Blocker 1 (third-party design)**: the Mitutoyo likeness is gone from the app. Still open: confirm Hi3D's
+licence terms allow commercial use of generated models, and replace the Mitutoyo test photo in
+`fixtures/` and the store screenshots before Play.
+
+---
+
 ## RC2 update (2026-11-21): Angle Lens protractor design
 
 The owner asked to replace the Mitutoyo logo with Angle Lens branding, make the body metallic gold, and show

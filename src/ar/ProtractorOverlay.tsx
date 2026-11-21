@@ -1,27 +1,28 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Vec2 } from '../geometry/angle2d';
 import { approachAngle, protractorPose, type ProtractorRig } from './protractorPose';
-import rigJson from './mitutoyoRig.json';
+import rigJson from './angleFinderRig.json';
 
 /**
- * AR presentation layer: the scanned Mitutoyo digital protractor drawn over the
- * camera image, pivot on the vertex, arm and blade laid along the two edges, LCD
- * showing the reading. Presentation only — the number shown is the measurement's
+ * AR presentation layer: the Angle Lens golden protractor drawn over the camera
+ * image, pivot on the vertex, ruler arm and blade laid along the two edges, the
+ * dial's display showing the reading. Presentation only — the number shown is the measurement's
  * displayDeg; nothing here computes or alters an angle.
  */
 const rig = rigJson as ProtractorRig & {
   armLength: number;
-  /** LCD window: centre, size and tilt in model units, front view. */
+  /** Display window: centre, size and tilt in model units, front view. */
   lcd: { cx: number; cy: number; w: number; h: number; angleDeg: number; z: number };
 };
 // Served from public/ (web dev server and the Android WebView both serve the app root).
-const MODEL_URL = 'models/mitutoyo-protractor.glb';
+const MODEL_URL = 'models/angle-finder.glb';
 let modelPromise: Promise<THREE.Group> | null = null;
 const loadModel = () => (modelPromise ??= new GLTFLoader().loadAsync(MODEL_URL).then((g) => g.scene));
 
-export interface MitutoyoOverlayProps {
+export interface ProtractorOverlayProps {
   /** Container size in CSS px. */
   width: number;
   height: number;
@@ -36,31 +37,38 @@ export interface MitutoyoOverlayProps {
   aim?: Vec2;
 }
 
-const LCD_W = 512, LCD_H = 212; // same aspect as rig.lcd (w:h ~ 2.4)
+const LCD_W = 528, LCD_H = 240; // same aspect as rig.lcd (w:h = 2.2)
 
 function drawLcd(ctx: CanvasRenderingContext2D, deg: number | null, locked: boolean) {
-  ctx.fillStyle = '#aab69a';
+  // Dark glass with a glowing read-out, matching the app's cyan-and-gold HUD.
+  const bg = ctx.createLinearGradient(0, 0, 0, LCD_H);
+  bg.addColorStop(0, '#0b1c2c');
+  bg.addColorStop(1, '#03090f');
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, LCD_W, LCD_H);
-  const g = ctx.createLinearGradient(0, 0, 0, LCD_H);
-  g.addColorStop(0, 'rgba(255,255,255,0.18)');
-  g.addColorStop(1, 'rgba(0,0,0,0.12)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, LCD_W, LCD_H);
-  ctx.fillStyle = '#1b2116';
+  ctx.strokeStyle = 'rgba(56,214,255,0.55)';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(5, 5, LCD_W - 10, LCD_H - 10);
   ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(56,214,255,0.9)';
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = '#f2fbff';
   ctx.textAlign = 'right';
-  ctx.font = 'bold 150px "Courier New", ui-monospace, monospace';
-  ctx.fillText(deg === null ? '---.-' : deg.toFixed(1), LCD_W - 70, LCD_H / 2 + 6);
+  ctx.font = '600 150px "Rajdhani", "Segoe UI", system-ui, sans-serif';
+  ctx.fillText(deg === null ? '---.-' : deg.toFixed(1), LCD_W - 70, LCD_H / 2 + 12);
   ctx.textAlign = 'left';
-  ctx.font = 'bold 60px "Courier New", ui-monospace, monospace';
-  ctx.fillText('°', LCD_W - 66, LCD_H / 2 - 40);
+  ctx.font = '600 70px "Rajdhani", "Segoe UI", system-ui, sans-serif';
+  ctx.fillText('°', LCD_W - 66, LCD_H / 2 - 30);
   if (locked) {
-    ctx.font = 'bold 34px "Courier New", ui-monospace, monospace';
-    ctx.fillText('HOLD', 22, 36);
+    ctx.fillStyle = '#ffc94a';
+    ctx.shadowColor = 'rgba(255,190,60,0.8)';
+    ctx.font = '700 34px "Rajdhani", "Segoe UI", system-ui, sans-serif';
+    ctx.fillText('HOLD', 24, 40);
   }
+  ctx.shadowBlur = 0;
 }
 
-const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex, edgeA, edgeB, displayDeg, locked = false, aim }) => {
+const ProtractorOverlay: React.FC<ProtractorOverlayProps> = ({ width, height, vertex, edgeA, edgeB, displayDeg, locked = false, aim }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const propsRef = useRef({ width, height, vertex, edgeA, edgeB, locked, aim });
   propsRef.current = { width, height, vertex, edgeA, edgeB, locked, aim };
@@ -81,7 +89,15 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.setClearColor(0x000000, 0);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
     const scene = new THREE.Scene();
+    // Image-based lighting so the gold reads as polished metal.
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = envTex;
+    const key = new THREE.DirectionalLight(0xfff1d6, 1.6);
+    key.position.set(-1, 1.5, 2);
+    scene.add(key);
     const camera = new THREE.OrthographicCamera(0, 1, 0, -1, -5000, 5000);
 
     const root = new THREE.Group(); // at the vertex, rotated + scaled
@@ -90,7 +106,7 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
     root.visible = false;
     scene.add(root);
 
-    const materials: THREE.MeshBasicMaterial[] = [];
+    const materials: THREE.Material[] = [];
     let disposed = false;
     let raf = 0;
 
@@ -104,7 +120,7 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
     lcdTex.anisotropy = 4;
     lcdRef.current = { ctx: lcdCtx, tex: lcdTex };
     drawLcd(lcdCtx, lcdStateRef.current.displayDeg, lcdStateRef.current.locked);
-    const lcdMat = new THREE.MeshBasicMaterial({ map: lcdTex, transparent: true });
+    const lcdMat = new THREE.MeshBasicMaterial({ map: lcdTex, transparent: true, toneMapped: false });
     materials.push(lcdMat);
     const lcdTilt = THREE.MathUtils.degToRad(rig.lcd.angleDeg);
     const lcdMesh = new THREE.Mesh(new THREE.PlaneGeometry(rig.lcd.w, rig.lcd.h), lcdMat);
@@ -120,8 +136,16 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
         const mesh = o as THREE.Mesh;
         if (!mesh.isMesh) return;
         const old = mesh.material as THREE.MeshStandardMaterial;
-        // Unlit: the scan's lighting is baked into its texture.
-        const m = new THREE.MeshBasicMaterial({ map: old.map, transparent: true });
+        // Lit PBR gold; the texture's metal/roughness map drives the finish.
+        const m = new THREE.MeshStandardMaterial({
+          map: old.map,
+          metalnessMap: old.metalnessMap,
+          roughnessMap: old.roughnessMap,
+          metalness: 1,
+          roughness: 0.6,
+          envMapIntensity: 1.8,
+          transparent: true,
+        });
         materials.push(m);
         mesh.material = m;
       });
@@ -129,7 +153,7 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
       const blade = model.getObjectByName('blade');
       if (body) { body.position.set(-rig.pivot.x, -rig.pivot.y, 0); root.add(body); }
       if (blade) { blade.position.set(-rig.pivot.x, -rig.pivot.y, 0); bladePivot.add(blade); }
-    }).catch((e) => console.error('Mitutoyo model failed to load', e));
+    }).catch((e) => console.error('Protractor model failed to load', e));
 
     const cur = { x: 0, y: 0, body: 0, blade: 0, scale: 0, ready: false };
     let mirrored = false;
@@ -185,8 +209,7 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
       bladePivot.rotation.z = THREE.MathUtils.degToRad(cur.blade);
       root.visible = true;
 
-      // Ghosted while searching / aligning, solid once locked. No colour tint:
-      // the gold finish is in the texture.
+      // Ghosted while searching / aligning, solid once locked.
       const pulse = 0.5 + 0.5 * Math.sin(t / 450);
       const opacity = !measuring ? 0.18 + 0.12 * pulse : p.locked ? 0.96 : 0.72;
       for (const m of materials) m.opacity = opacity;
@@ -200,6 +223,8 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
       lcdRef.current = null;
       lcdTex.dispose();
       materials.forEach((m) => m.dispose());
+      envTex.dispose();
+      pmrem.dispose();
       renderer.dispose();
     };
   }, []);
@@ -207,4 +232,4 @@ const MitutoyoOverlay: React.FC<MitutoyoOverlayProps> = ({ width, height, vertex
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ width, height }} />;
 };
 
-export default MitutoyoOverlay;
+export default ProtractorOverlay;

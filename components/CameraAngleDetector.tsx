@@ -2,17 +2,17 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { AngleAnalysisResult } from '../types';
 import AngleDisplay from './AngleDisplay';
 import ManualProtractor from '../src/render/ManualProtractor';
-import MitutoyoOverlay from '../src/ar/MitutoyoOverlay';
+import ProtractorOverlay from '../src/ar/ProtractorOverlay';
 import { coverCrop } from '../src/camera/cameraTransform';
 import { rgbaToGray, type GrayImage } from '../src/vision/grayImage';
 import type { Vec2 } from '../src/geometry/angle2d';
-import { Camera, Zap, AlertTriangle, Loader, Crosshair, ImageUp, Ruler, Focus } from 'lucide-react';
+import { Camera, Zap, AlertTriangle, Loader, Crosshair, ImageUp, Ruler, Box, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 interface FrozenFrame {
     canvas: HTMLCanvasElement;
     gray: GrayImage;
     initial: [Vec2, Vec2, Vec2] | null;
-    /** Opened with AR Lock: show the 3D Mitutoyo protractor on the measurement. */
+    /** Opened with AR Lock: show the 3D Angle Lens protractor on the measurement. */
     ar: boolean;
 }
 
@@ -28,6 +28,26 @@ const arStartPoints = (w: number, h: number): [Vec2, Vec2, Vec2] => {
         n(w / 2 + r * Math.cos(Math.PI / 3), h / 2 - r * Math.sin(Math.PI / 3)),
     ];
 };
+
+/** Targeting reticle for the live view: tick ring, gold arc segments, centre dot. */
+const HudReticle: React.FC<{ className?: string }> = ({ className }) => (
+    <svg viewBox="-100 -100 200 200" className={className} aria-hidden="true">
+        <g fill="none" stroke="#38d6ff" strokeLinecap="round">
+            <circle r="88" strokeWidth="1" strokeOpacity="0.55" />
+            {Array.from({ length: 72 }, (_, i) => {
+                const a = (i * 5 * Math.PI) / 180, r0 = i % 6 === 0 ? 78 : 83;
+                return <line key={i} x1={r0 * Math.cos(a)} y1={r0 * Math.sin(a)} x2={88 * Math.cos(a)} y2={88 * Math.sin(a)} strokeWidth={i % 6 === 0 ? 1.6 : 0.8} strokeOpacity="0.7" />;
+            })}
+            <circle r="62" strokeWidth="1.2" strokeDasharray="3 5" strokeOpacity="0.5" />
+            <path d="M-6 0H-20M6 0H20M0-6V-20M0 6V20" strokeWidth="1.4" />
+        </g>
+        <g fill="none" stroke="#fbbf24" strokeWidth="2.4" strokeLinecap="round" opacity="0.85">
+            <path d="M-93 -25 A96 96 0 0 1 -60 -75" />
+            <path d="M93 25 A96 96 0 0 1 60 75" />
+        </g>
+        <circle r="2.6" fill="#38d6ff" />
+    </svg>
+);
 
 const CameraAngleDetector: React.FC = () => {
     const [isCameraOn, setIsCameraOn] = useState<boolean>(false);
@@ -250,26 +270,25 @@ const CameraAngleDetector: React.FC = () => {
                 Capture uses the tested coverCrop at whatever aspect is displayed,
                 and the angle is computed from normalized points in pixel space,
                 so the math is aspect-independent. */}
-            <div ref={containerRef} className="relative w-full aspect-video portrait:aspect-[3/4] bg-gray-800 rounded-lg shadow-2xl overflow-hidden border-2 border-gray-700">
+            <div ref={containerRef} className="gold-frame relative w-full aspect-video portrait:aspect-[3/4] bg-[#070b10] rounded-xl overflow-hidden">
+                {/* Glowing gold corner brackets */}
+                <span className="corner top-1.5 left-1.5 border-t-[3px] border-l-[3px] rounded-tl-lg" />
+                <span className="corner top-1.5 right-1.5 border-t-[3px] border-r-[3px] rounded-tr-lg" />
+                <span className="corner bottom-1.5 left-1.5 border-b-[3px] border-l-[3px] rounded-bl-lg" />
+                <span className="corner bottom-1.5 right-1.5 border-b-[3px] border-r-[3px] rounded-br-lg" />
                 {/* Transparent poster: Android WebView otherwise paints a large grey "play" placeholder before the camera starts. */}
                 <video ref={videoRef} autoPlay playsInline muted poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" className="w-full h-full object-cover"></video>
 
                 {!isCameraOn && !frozen && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-60 z-10">
-                        <Camera className="w-16 h-16 text-gray-400 mb-4" />
-                        <h2 className="text-xl font-semibold mb-2">Camera is off</h2>
+                        <Camera className="w-14 h-14 text-cyan-300/80 mb-3 drop-shadow-[0_0_8px_rgba(56,214,255,0.7)]" />
+                        <h2 className="font-display text-lg tracking-widest text-cyan-100 mb-4">CAMERA IS OFF</h2>
                         <div className="flex gap-3">
-                            <button
-                                onClick={() => { setIsCameraOn(true); startCamera(); }}
-                                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-md font-bold transition-transform transform hover:scale-105"
-                            >
-                                Start Camera
+                            <button onClick={() => { setIsCameraOn(true); startCamera(); }} className="gold-btn">
+                                <Camera className="w-5 h-5" /> Start Camera
                             </button>
-                            <button
-                                onClick={() => fileRef.current?.click()}
-                                className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-md font-bold transition-transform transform hover:scale-105"
-                            >
-                                Open Photo
+                            <button onClick={() => fileRef.current?.click()} className="gold-btn">
+                                <ImageUp className="w-5 h-5" /> Open Photo
                             </button>
                         </div>
                     </div>
@@ -281,17 +300,21 @@ const CameraAngleDetector: React.FC = () => {
 
                 {isCameraOn && !frozen && box.w > 0 && (
                     <div className="absolute inset-0 z-[15] pointer-events-none">
-                        <MitutoyoOverlay width={box.w} height={box.h} vertex={null} edgeA={null} edgeB={null} displayDeg={null} />
-                        <p className="absolute top-2 left-0 right-0 text-center font-mono text-xs text-cyan-200/90">
-                            Aim the bend at the crosshair, then tap AR Lock
-                        </p>
+                        <ProtractorOverlay width={box.w} height={box.h} vertex={null} edgeA={null} edgeB={null} displayDeg={null} />
+                        <div className="absolute top-3 left-3 right-3 flex items-center justify-center gap-2">
+                            <ChevronsLeft className="hidden sm:block w-6 h-6 text-cyan-300/70" />
+                            <p className="hud-panel flex items-center gap-2 px-4 py-1.5 text-[11px] sm:text-sm font-semibold uppercase tracking-wide text-slate-100">
+                                <Crosshair className="w-4 h-4 text-cyan-300 shrink-0" />
+                                <span>Aim the bend at the crosshair, then tap <span className="text-amber-300">AR Lock</span></span>
+                            </p>
+                            <ChevronsRight className="hidden sm:block w-6 h-6 text-cyan-300/70" />
+                        </div>
                     </div>
                 )}
 
-                {!frozen && (
+                {!frozen && isCameraOn && (
                     <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                        <div className="w-24 h-24 md:w-32 md:h-32 border-2 border-cyan-400 border-dashed rounded-full opacity-50"></div>
-                         <div className="w-1 h-1 bg-cyan-400 rounded-full absolute"></div>
+                        <HudReticle className="w-[58%] max-w-[22rem] aspect-square opacity-80" />
                     </div>
                 )}
 
@@ -302,7 +325,7 @@ const CameraAngleDetector: React.FC = () => {
                         initial={frozen.initial}
                         onExit={() => setFrozen(null)}
                         overlay={frozen.ar ? (g) => (
-                            <MitutoyoOverlay
+                            <ProtractorOverlay
                                 width={g.width}
                                 height={g.height}
                                 vertex={g.vertex}
@@ -345,30 +368,23 @@ const CameraAngleDetector: React.FC = () => {
             )}
 
             {!frozen && (
-                <div className="mt-6 flex flex-wrap gap-3 justify-center">
-                    <button
-                        onClick={handleArLock}
-                        disabled={!isCameraOn}
-                        className="flex items-center justify-center space-x-3 px-8 py-4 bg-cyan-400 text-gray-900 font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:bg-cyan-300 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:scale-100"
-                    >
-                        <Focus className="w-6 h-6" />
-                        <span>AR Lock</span>
+                <div className="mt-4 w-full grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 max-w-2xl">
+                    <button onClick={handleFreeze} disabled={!isCameraOn} className="gold-btn">
+                        <Crosshair className="w-6 h-6 shrink-0" />
+                        <span className="text-left">Freeze &amp;<br />Measure</span>
                     </button>
-                    <button
-                        onClick={handleFreeze}
-                        disabled={!isCameraOn}
-                        className="flex items-center justify-center space-x-3 px-8 py-4 bg-yellow-300 text-gray-900 font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:bg-yellow-200 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:scale-100"
-                    >
-                        <Crosshair className="w-6 h-6" />
-                        <span>Freeze &amp; Measure</span>
+                    <button onClick={handleArLock} disabled={!isCameraOn} className="ar-btn" aria-label="AR Lock">
+                        <Box className="w-9 h-9" strokeWidth={1.6} />
+                        <span>AR LOCK</span>
                     </button>
-                    <button
-                        onClick={() => fileRef.current?.click()}
-                        className="flex items-center justify-center space-x-3 px-6 py-4 bg-gray-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:bg-gray-600"
-                    >
-                        <ImageUp className="w-6 h-6" />
-                        <span>Open Photo</span>
+                    <button onClick={() => fileRef.current?.click()} className="gold-btn">
+                        <ImageUp className="w-6 h-6 shrink-0" />
+                        <span className="text-left">Open<br />Photo</span>
                     </button>
+                </div>
+            )}
+            {!frozen && (__AI_ASSIST__ || (analysisResult?.isAngleFound && analysisResult.points)) && (
+                <div className="mt-4 flex flex-wrap gap-3 justify-center">
                     {__AI_ASSIST__ && (
                         <button
                             onClick={handleAnalyze}

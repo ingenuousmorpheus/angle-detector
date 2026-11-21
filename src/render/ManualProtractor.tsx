@@ -43,7 +43,7 @@ interface ManualProtractorProps {
   onMeasurement?: (m: AngleMeasurement | null) => void;
   /**
    * Optional presentation layer drawn between the frozen frame and the edge lines
-   * (e.g. the AR Mitutoyo protractor). Receives container-px geometry; it cannot
+   * (e.g. the AR protractor). Receives container-px geometry; it cannot
    * change the points or the measurement.
    */
   overlay?: (g: ProtractorOverlayGeometry) => React.ReactNode;
@@ -247,7 +247,7 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
   })();
   const nextPrompt = points.findIndex((q) => q === null);
 
-  const btn = 'flex items-center gap-1.5 px-3 h-11 rounded-md bg-black/70 hover:bg-black/90 text-sm font-semibold disabled:opacity-40';
+  const btn = 'flex items-center gap-1.5 px-3 h-11 rounded-md bg-[#071019]/85 hover:bg-[#0b1a26] border border-amber-400/60 shadow-[0_0_8px_rgba(251,191,36,0.25)] text-sm font-hud font-bold uppercase tracking-wide text-amber-100 disabled:opacity-40';
   // Icon-only toolbar on small screens: same buttons, handlers, order and
   // 44px touch targets — the text labels just collapse below the sm breakpoint
   // so the toolbar fits one row on a portrait phone instead of covering the frame.
@@ -368,38 +368,38 @@ const ManualProtractor: React.FC<ManualProtractorProps> = ({ frame, gray, initia
           readability, plus explicit FROZEN / LOCKED status so a live reading is
           never confused with a frozen measurement. Presentation only — the
           numbers come from the unchanged AngleMeasurement contract. */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-3 py-2.5 text-center pointer-events-none border-t border-white/10">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-[#06121c]/90 to-black/95 px-3 py-2.5 text-center pointer-events-none border-t-2 border-amber-400/70 shadow-[0_-4px_16px_rgba(251,191,36,0.25)] font-hud">
         {nextPrompt !== -1 ? (
-          <span className="font-mono text-cyan-300 text-lg">{PROMPTS[nextPrompt]}</span>
+          <span className="text-cyan-200 text-lg font-semibold uppercase tracking-wide">{PROMPTS[nextPrompt]}</span>
         ) : measurement?.found ? (
           <div className="flex flex-col items-center gap-1">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-amber-300 bg-amber-400/15 border border-amber-300/40 rounded px-2 py-0.5">
+              <span className="text-xs font-bold uppercase tracking-widest text-amber-300 bg-amber-400/15 border border-amber-300/40 rounded px-2 py-0.5">
                 Frozen
               </span>
               {locked && (
-                <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-lime-300 bg-lime-400/15 border border-lime-300/40 rounded px-2 py-0.5">
+                <span className="text-xs font-bold uppercase tracking-widest text-lime-300 bg-lime-400/15 border border-lime-300/40 rounded px-2 py-0.5">
                   Locked
                 </span>
               )}
-              <span className="font-mono font-bold tabular-nums text-yellow-200 text-4xl md:text-5xl leading-none">
+              <span className="font-bold tabular-nums text-cyan-50 text-5xl md:text-6xl leading-none drop-shadow-[0_0_10px_rgba(56,214,255,0.85)]">
                 {formatAngle(measurement.displayDeg)}
               </span>
             </div>
-            <div className="hidden sm:block font-mono text-gray-400 text-xs md:text-sm">
+            <div className="hidden sm:block text-slate-400 text-xs md:text-sm">
               {conventionLabel(convention)} · interior {formatAngle(measurement.angleDeg)} · supplement{' '}
               {formatAngle(measurement.supplementDeg)} · 2D apparent · manual · snap {snap ? 'on' : 'off'}
             </div>
-            <div className="sm:hidden font-mono text-gray-400 text-xs">
+            <div className="sm:hidden text-slate-400 text-xs">
               {conventionLabel(convention)} · 2D apparent · snap {snap ? 'on' : 'off'}
             </div>
             {/* P2: warning meets 4.5:1 contrast (text-gray-300 on near-black). */}
-            <p className="font-mono text-gray-300 text-[11px] mt-1 px-2">
+            <p className="text-gray-300 text-xs mt-1 px-2">
               Verify both edge points before trusting the angle. Snap may select nearby features.
             </p>
           </div>
         ) : (
-          <span className="font-mono text-yellow-400">{measurement?.reason}</span>
+          <span className="text-amber-300">{measurement?.reason}</span>
         )}
       </div>
     </div>
