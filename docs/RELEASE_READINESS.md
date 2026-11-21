@@ -8,6 +8,17 @@ Labels used: **VERIFIED** (observed in this session, with the evidence named), *
 
 ---
 
+## Hi3D licence check (2026-11-21)
+
+Hi3D's Terms of Use say use of generated content "will depend on the terms of your specific subscription plan".
+The pricing page (hi3d.ai/pricing, checked 2026-11-21) lists **Free: "No commercial use", "No 3D model downloads"**;
+**Pro ($9.95/mo), Max, Ultra: "Commercial use"**. The terms do not say whether rights continue after a
+subscription ends. **Owner to confirm** which plan the account was on when `Golden Angle Finder Pro` was
+generated (2026-11-21), keep the receipt, and ideally get Hi3D support to confirm in writing that a model
+generated on a paid plan may be shipped in a paid app permanently. Until then the model is a Play blocker.
+
+---
+
 ## RC3 update (2026-11-21): own protractor model and HUD redesign
 
 Replaces the Mitutoyo-likeness model with the owner's own "Golden Angle Finder Pro"

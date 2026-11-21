@@ -1,19 +1,20 @@
 # Google Play listing draft: Angle Lens (closed test)
 
-> Draft for the owner to review. Wording avoids accuracy claims: no calibration evidence exists yet.
-> **Hold the Mitutoyo wording and imagery until the trademark/asset question in `docs/RELEASE_READINESS.md` is settled.**
+> Draft for the owner to review (updated for 1.0.0-rc5). Wording avoids accuracy claims: no calibration evidence exists yet.
+> The Mitutoyo likeness is gone. **Before publishing:** the protractor model came from Hi3D, whose Free plan says
+> "No commercial use"; it must have been generated on (or be covered by) a paid Pro/Max/Ultra plan. See `docs/RELEASE_READINESS.md`.
 
 **App name (30 max):** Angle Lens
-**Short description (80 max):** Freeze the camera, mark a bend, and read its angle on your phone.
+**Short description (80 max):** Camera angle finder: lock a gold 3D protractor onto any bend and read it.
 
 ## Full description (4000 max)
 
-Angle Lens is a camera protractor for checking bends and corners on the shop floor.
+Angle Lens turns your phone into a professional-looking angle finder. Point the camera at a bend, a corner, a railing or a roof line, and read the angle in seconds.
 
 Point your camera at a bend and freeze the frame. Tap the bend's corner (the vertex) and a point on each edge, and Angle Lens draws the angle and shows the reading in large digits. Drag any point to fine-tune it.
 
 FEATURES
-• AR Lock: aim the bend at the crosshair and tap AR Lock. Both arms appear pre-placed; drag each onto its edge and a 3D digital-protractor overlay follows, with the reading on its display.
+• AR Lock: aim the bend at the crosshair and tap AR Lock. A polished gold 3D angle finder snaps onto the bend; drag each arm onto its edge and the reading appears on the tool's own display.
 • Freeze & Measure: tap the vertex and both edges yourself on any frozen frame.
 • Open Photo: measure a picture from your gallery.
 • Interior, supplement or exterior angle, always labeled.
@@ -27,10 +28,11 @@ GOOD TO KNOW
 
 **Category:** Tools · **Contains ads:** No · **In-app purchases:** No
 
-## Release notes, 1.0.0-rc1 (500 max)
+## Release notes, 1.0.0-rc5 (500 max)
 
 First closed test.
-• AR Lock with 3D protractor overlay
+• New gold-and-cyan HUD design
+• AR Lock with a solid 3D gold angle finder overlay
 • Freeze & Measure and Open Photo
 • Interior / supplement / exterior angles
 • Save or share annotated image
